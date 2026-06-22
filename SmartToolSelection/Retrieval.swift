@@ -46,10 +46,10 @@ struct SearchResult: Identifiable, Sendable, Hashable {
     var id: String { tool.id }
 }
 
-/// The six converted models are published on the Hugging Face Hub under the
-/// `ronaldmannak` account; they're downloaded and cached on first use.
+/// The six converted models are published on the Hugging Face Hub under
+/// `mlx-community`; they're downloaded and cached on first use.
 func modelRepoId(backend: Backend, quant: Quant) -> String {
-    "ronaldmannak/\(backend.modelName)-\(quant.suffix)"
+    "mlx-community/\(backend.modelName)-\(quant.suffix)"
 }
 
 // MARK: - Model download (Hugging Face Hub)
