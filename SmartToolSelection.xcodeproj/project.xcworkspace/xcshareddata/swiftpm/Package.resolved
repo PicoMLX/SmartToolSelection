@@ -1,5 +1,5 @@
 {
-  "originHash" : "43c93e2f2dc7952fe4b0cbf20063f30981c0d0f43820efd34fa98650b9cdcc24",
+  "originHash" : "f74af5a6d6a0127f301b06e6fe3148263db2e8bcfc6317fab15da6d7b310e3e1",
   "pins" : [
     {
       "identity" : "jinja",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "dc43e62d7055353c7f99fa071a4e71d29dfddc44",
         "version" : "0.31.4"
+      }
+    },
+    {
+      "identity" : "mlx-swift-lm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/picomlx/mlx-swift-lm",
+      "state" : {
+        "branch" : "lfm2.5-bidirectional-embedders",
+        "revision" : "d43c2aad48e169ea0c7ca863e10f762ac34cb42f"
       }
     },
     {
