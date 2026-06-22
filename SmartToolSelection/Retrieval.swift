@@ -68,13 +68,24 @@ enum ModelDownloader {
         repoId: String, progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
         let directory = try cacheDirectory(for: repoId)
+        var didDownload = false
         for file in smallFiles {
-            try await fetch(repoId: repoId, file: file, into: directory, delegate: nil)
+            if try await fetch(repoId: repoId, file: file, into: directory, delegate: nil) {
+                didDownload = true
+            }
         }
         // The weights are ~99% of the bytes — report their byte progress directly.
-        try await fetch(
+        if try await fetch(
             repoId: repoId, file: weightsFile, into: directory,
             delegate: DownloadProgress(progress))
+        {
+            didDownload = true
+        }
+        // Tell users exactly where the model lives on disk.
+        print(
+            didDownload
+                ? "✅ Downloaded \(repoId) to: \(directory.path)"
+                : "✅ Using cached \(repoId) at: \(directory.path)")
         return directory
     }
 
@@ -87,11 +98,14 @@ enum ModelDownloader {
         return dir
     }
 
+    /// Returns `true` if the file was fetched from the network, `false` if it was
+    /// already cached on disk.
+    @discardableResult
     private static func fetch(
         repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?
-    ) async throws {
+    ) async throws -> Bool {
         let destination = directory.appending(component: file)
-        if FileManager.default.fileExists(atPath: destination.path) { return }
+        if FileManager.default.fileExists(atPath: destination.path) { return false }
         guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/main/\(file)") else {
             throw URLError(.badURL)
         }
@@ -101,6 +115,7 @@ enum ModelDownloader {
         }
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.moveItem(at: temp, to: destination)
+        return true
     }
 }
 
@@ -124,8 +139,13 @@ actor RetrievalEngine {
     private var tokenizer: (any Tokenizers.Tokenizer)?
     private var config: LFM2BidirectionalConfiguration?
 
-    private var docVectors: [[Float]] = []  // embedding: (nTools, hidden)
-    private var docMultiVectors: [[[Float]]] = []  // colbert: per-tool (L, projDim)
+    // Index stored as flat, row-major Float buffers so scoring is a single BLAS call
+    // (cblas_sgemv / cblas_sgemm) instead of a Swift dot-product loop.
+    private var docEmbeddings: [Float] = []  // embedding: flat (nTools × hidden)
+    private var embeddingDim = 0
+    private var docMatrices: [[Float]] = []  // colbert: per-tool flat (Lᵈ × projDim)
+    private var docRows: [Int] = []  // colbert: per-tool token count Lᵈ
+    private var projDim = 0
     private var skiplistIds: Set<Int32> = []  // colbert: punctuation tokens dropped from doc scoring
 
     private var bosId: Int { 1 }  // LFM2.5 bos_token_id; CLS == BOS at position 0
@@ -157,8 +177,11 @@ actor RetrievalEngine {
         self.model = m
         self.tokenizer = tok
         self.skiplistIds = Self.loadSkiplist(directory: directory, tokenizer: tok)
-        self.docVectors = []
-        self.docMultiVectors = []
+        self.docEmbeddings = []
+        self.embeddingDim = 0
+        self.docMatrices = []
+        self.docRows = []
+        self.projDim = 0
     }
 
     /// ColBERT document skiplist: PyLate drops punctuation tokens (from
@@ -187,13 +210,18 @@ actor RetrievalEngine {
         switch head {
         case .embedding:
             let prefix = config.mlx.prompts?["document"] ?? "document: "
-            docVectors = routingTexts.map { encodeEmbedding(prefix + $0) }
+            let vectors = routingTexts.map { encodeEmbedding(prefix + $0) }
+            embeddingDim = vectors.first?.count ?? 0
+            docEmbeddings = vectors.flatMap { $0 }  // one contiguous (nTools × hidden) buffer
         case .colbert:
             let prefix = config.mlx.documentPrefix ?? "[D] "
+            projDim = config.mlx.projDim ?? 128
             // Documents are not augmented; drop skiplist (punctuation) tokens like PyLate.
-            docMultiVectors = routingTexts.map {
+            let mats = routingTexts.map {
                 encodeColbert(prefix + $0, padToQueryLength: false, dropSkiplist: true)
             }
+            docMatrices = mats.map(\.data)
+            docRows = mats.map(\.rows)
         }
     }
 
@@ -204,11 +232,13 @@ actor RetrievalEngine {
         case .embedding:
             let prefix = config.mlx.prompts?["query"] ?? "query: "
             let q = encodeEmbedding(prefix + query)
-            return docVectors.map { dot($0, q) }  // cosine (vectors normalized)
+            return cosineScores(query: q)  // one BLAS matrix-vector product (cosine)
         case .colbert:
             let prefix = config.mlx.queryPrefix ?? "[Q] "
             let q = encodeColbert(prefix + query)
-            return docMultiVectors.map { maxSim(query: q, document: $0) }
+            return zip(docMatrices, docRows).map {
+                maxSim(query: q.data, queryRows: q.rows, doc: $0.0, docRows: $0.1, dim: projDim)
+            }
         }
     }
 
@@ -242,8 +272,8 @@ actor RetrievalEngine {
     /// `false` to see the un-augmented behavior (lower scores, same ranking).
     private func encodeColbert(
         _ text: String, padToQueryLength: Bool = true, dropSkiplist: Bool = false
-    ) -> [[Float]] {
-        guard let model else { return [] }
+    ) -> (data: [Float], rows: Int) {
+        guard let model else { return ([], 0) }
         var ids = tokenIds(text)
         var attentionMask: MLXArray? = nil
 
@@ -266,44 +296,76 @@ actor RetrievalEngine {
         pooled.eval()
         let l = pooled.dim(1)
         let d = pooled.dim(2)
-        let flat = pooled.reshaped(l, d)
-        let vectors = (0 ..< l).map { flat[$0].asArray(Float.self) }
-        if dropSkiplist, !skiplistIds.isEmpty {
-            // Drop punctuation/skiplist document tokens before they reach MaxSim.
-            return zip(ids, vectors).filter { !skiplistIds.contains($0.0) }.map(\.1)
+        // Row-major (L × projDim) contiguous buffer, ready for BLAS.
+        let all = pooled.reshaped(l, d).asArray(Float.self)
+        guard dropSkiplist, !skiplistIds.isEmpty else { return (all, l) }
+        // Drop punctuation/skiplist document tokens before they reach MaxSim.
+        var kept = [Float]()
+        kept.reserveCapacity(all.count)
+        var rows = 0
+        for i in 0 ..< l where !skiplistIds.contains(ids[i]) {
+            kept.append(contentsOf: all[(i * d) ..< ((i + 1) * d)])
+            rows += 1
         }
-        return vectors
+        return (kept, rows)
+    }
+
+    /// Cosine scores for every indexed embedding doc as one BLAS matrix-vector
+    /// product (`Docs · query`) — vectors are L2-normalized, so the dot product is
+    /// the cosine. Replaces N separate per-doc dot products.
+    private func cosineScores(query: [Float]) -> [Float] {
+        let dim = embeddingDim
+        guard dim > 0, query.count >= dim, !docEmbeddings.isEmpty else { return [] }
+        let n = docEmbeddings.count / dim
+        var out = [Float](repeating: 0, count: n)
+        docEmbeddings.withUnsafeBufferPointer { docs in
+            query.withUnsafeBufferPointer { q in
+                out.withUnsafeMutableBufferPointer { result in
+                    // result(n) = Docs(n × dim) · q(dim)
+                    cblas_sgemv(
+                        CblasRowMajor, CblasNoTrans, Int32(n), Int32(dim),
+                        1, docs.baseAddress, Int32(dim),
+                        q.baseAddress, 1, 0, result.baseAddress, 1)
+                }
+            }
+        }
+        return out
     }
 }
 
-// MARK: - Scoring helpers (plain arrays; cheap for 151 tools)
+// MARK: - Scoring helpers (Accelerate BLAS over flat, row-major Float buffers)
 
-private func dot(_ a: [Float], _ b: [Float]) -> Float {
-    let n = min(a.count, b.count)
-    guard n > 0 else { return 0 }
-    var result: Float = 0
-    a.withUnsafeBufferPointer { ap in
-        b.withUnsafeBufferPointer { bp in
-            vDSP_dotpr(ap.baseAddress!, 1, bp.baseAddress!, 1, &result, vDSP_Length(n))
+/// ColBERT MaxSim via one BLAS matrix multiply per document: form the full
+/// query×document token-similarity matrix `Q · Dᵀ` with `cblas_sgemm`, then take the
+/// per-query-token max (`vDSP_maxv`), sum, and normalize by the query-token count.
+/// Vectors are L2-normalized, so each entry is a cosine. This replaces an
+/// O(Lq·Ld) Swift double loop of individual dot products with a single GEMM + a
+/// handful of vDSP reductions.
+private func maxSim(query: [Float], queryRows: Int, doc: [Float], docRows: Int, dim: Int) -> Float {
+    guard queryRows > 0, docRows > 0, dim > 0 else { return 0 }
+    var sim = [Float](repeating: 0, count: queryRows * docRows)
+    query.withUnsafeBufferPointer { q in
+        doc.withUnsafeBufferPointer { d in
+            sim.withUnsafeMutableBufferPointer { s in
+                // sim(Lq × Ld) = Q(Lq × dim) · Dᵀ(dim × Ld)
+                cblas_sgemm(
+                    CblasRowMajor, CblasNoTrans, CblasTrans,
+                    Int32(queryRows), Int32(docRows), Int32(dim),
+                    1, q.baseAddress, Int32(dim),
+                    d.baseAddress, Int32(dim),
+                    0, s.baseAddress, Int32(docRows))
+            }
         }
     }
-    return result
-}
-
-/// MaxSim late interaction: for each query token, the best dot product over the
-/// document's tokens; summed and normalized by the query-token count.
-private func maxSim(query: [[Float]], document: [[Float]]) -> Float {
-    guard !query.isEmpty, !document.isEmpty else { return 0 }
     var total: Float = 0
-    for q in query {
-        var best = -Float.greatestFiniteMagnitude
-        for d in document {
-            let s = dot(q, d)
-            if s > best { best = s }
+    sim.withUnsafeBufferPointer { s in
+        for i in 0 ..< queryRows {
+            var best: Float = 0
+            vDSP_maxv(s.baseAddress! + i * docRows, 1, &best, vDSP_Length(docRows))
+            total += best
         }
-        total += best
     }
-    return total / Float(query.count)
+    return total / Float(queryRows)
 }
 
 // MARK: - App model (MainActor — drives the UI)
