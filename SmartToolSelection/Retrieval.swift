@@ -46,20 +46,75 @@ struct SearchResult: Identifiable, Sendable, Hashable {
     var id: String { tool.id }
 }
 
-/// Where the converted model directories live on disk. Override with the
-/// `MODELS_ROOT` environment variable; otherwise default to
-/// `~/Developer/Projects/Models/mlx-models`. (The library also supports
-/// `mlx-community` registry ids for download-based loading.)
-let modelsRoot: URL = {
-    if let override = ProcessInfo.processInfo.environment["MODELS_ROOT"], !override.isEmpty {
-        return URL(fileURLWithPath: override)
-    }
-    return FileManager.default.homeDirectoryForCurrentUser
-        .appending(path: "Developer/Projects/Models/mlx-models")
-}()
+/// The six converted models are published on the Hugging Face Hub under the
+/// `ronaldmannak` account; they're downloaded and cached on first use.
+func modelRepoId(backend: Backend, quant: Quant) -> String {
+    "ronaldmannak/\(backend.modelName)-\(quant.suffix)"
+}
 
-func modelDirectory(backend: Backend, quant: Quant) -> URL {
-    modelsRoot.appending(component: "\(backend.modelName)-\(quant.suffix)")
+// MARK: - Model download (Hugging Face Hub)
+
+/// Downloads the converted model files from a public HF repo into the app's
+/// Application Support cache and returns the local directory. Files already present
+/// are skipped, so subsequent launches don't re-download.
+enum ModelDownloader {
+    private static let smallFiles = [
+        "config.json", "config_sentence_transformers.json", "tokenizer.json",
+        "tokenizer_config.json", "special_tokens_map.json",
+    ]
+    private static let weightsFile = "model.safetensors"
+
+    static func download(
+        repoId: String, progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> URL {
+        let directory = try cacheDirectory(for: repoId)
+        for file in smallFiles {
+            try await fetch(repoId: repoId, file: file, into: directory, delegate: nil)
+        }
+        // The weights are ~99% of the bytes — report their byte progress directly.
+        try await fetch(
+            repoId: repoId, file: weightsFile, into: directory,
+            delegate: DownloadProgress(progress))
+        return directory
+    }
+
+    private static func cacheDirectory(for repoId: String) throws -> URL {
+        let dir = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appending(path: "SmartToolSelection/models")
+            .appending(path: repoId)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private static func fetch(
+        repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?
+    ) async throws {
+        let destination = directory.appending(component: file)
+        if FileManager.default.fileExists(atPath: destination.path) { return }
+        guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/main/\(file)") else {
+            throw URLError(.badURL)
+        }
+        let (temp, response) = try await URLSession.shared.download(from: url, delegate: delegate)
+        if let http = response as? HTTPURLResponse, !(200 ..< 300).contains(http.statusCode) {
+            throw URLError(.badServerResponse)
+        }
+        try? FileManager.default.removeItem(at: destination)
+        try FileManager.default.moveItem(at: temp, to: destination)
+    }
+}
+
+/// Forwards a download task's byte progress (KVO on `task.progress`).
+private final class DownloadProgress: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let report: @Sendable (Double) -> Void
+    private var observation: NSKeyValueObservation?
+    init(_ report: @escaping @Sendable (Double) -> Void) { self.report = report }
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.progress.observe(\.fractionCompleted, options: [.new]) {
+            [report] progress, _ in
+            report(progress.fractionCompleted)
+        }
+    }
 }
 
 // MARK: - Retrieval engine (actor — keeps the non-Sendable model off the main thread)
@@ -275,6 +330,7 @@ final class AppModel {
     private var engine = RetrievalEngine()
     private var loadedKey: String?
     private var loadTask: Task<Void, Never>?
+    private var lastDownloadPercent = -1
 
     var domains: [String] {
         Array(Set(tools.map(\.domain))).filter { !$0.isEmpty }.sorted()
@@ -307,17 +363,34 @@ final class AppModel {
     private func performLoad() async {
         let key = "\(backend.rawValue)-\(quant.suffix)"
         if loadedKey == key, case .ready = status { return }
-        let dir = modelDirectory(backend: backend, quant: quant)
-        status = .loading("Loading \(backend.modelName) (\(quant.title))…")
+        let repo = modelRepoId(backend: backend, quant: quant)
+        lastDownloadPercent = -1
+        status = .loading("Downloading \(backend.modelName) (\(quant.title))…")
         do {
-            try await engine.load(directory: dir)
+            // Download + cache the converted model files from the Hugging Face Hub.
+            let directory = try await ModelDownloader.download(repoId: repo) { [weak self] fraction in
+                guard let self else { return }
+                Task { @MainActor in self.reportDownload(fraction) }
+            }
+            status = .loading("Loading \(backend.modelName)…")
+            try await engine.load(directory: directory)
             status = .loading("Indexing \(tools.count) tools…")
             await engine.buildIndex(routingTexts: tools.map(\.routingText))
             loadedKey = key
             status = .ready
             if !lastQuery.isEmpty { await search(lastQuery) }
         } catch {
-            status = .failed("\(error.localizedDescription)\n\(dir.path)")
+            status = .failed("\(error.localizedDescription)\n\(repo)")
+        }
+    }
+
+    /// Throttled download-progress -> status (only updates while still downloading).
+    private func reportDownload(_ fraction: Double) {
+        let pct = max(0, min(100, Int(fraction * 100)))
+        guard pct != lastDownloadPercent else { return }
+        lastDownloadPercent = pct
+        if case .loading(let message) = status, message.hasPrefix("Downloading") {
+            status = .loading("Downloading \(backend.modelName) (\(quant.title))… \(pct)%")
         }
     }
 

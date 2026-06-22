@@ -19,10 +19,15 @@ struct SmartToolSelectionTests {
     ]
     static let query = "What is the capital of France?"
 
+    // Tests load from the local converted dirs (fast, no network); the app downloads from HF.
+    static let localModelsRoot = URL(
+        fileURLWithPath: "/Users/ronaldmannak/Developer/Projects/Models/mlx-models")
+    static func localDir(_ backend: Backend, _ quant: Quant = .bf16) -> URL {
+        localModelsRoot.appending(component: "\(backend.modelName)-\(quant.suffix)")
+    }
     static func dirExists(_ backend: Backend) -> Bool {
         FileManager.default.fileExists(
-            atPath: modelDirectory(backend: backend, quant: .bf16)
-                .appending(component: "config.json").path)
+            atPath: localDir(backend).appending(component: "config.json").path)
     }
 
     private func order(_ scores: [Float]) -> [Int] {
@@ -34,7 +39,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.embedding)))
     func embeddingRanking() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: modelDirectory(backend: .embedding, quant: .bf16))
+        try await engine.load(directory: Self.localDir(.embedding))
         await engine.buildIndex(routingTexts: Self.docs)
         let scores = await engine.scores(for: Self.query)
 
@@ -49,7 +54,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.colbert)))
     func colbertRanking() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: modelDirectory(backend: .colbert, quant: .bf16))
+        try await engine.load(directory: Self.localDir(.colbert))
         await engine.buildIndex(routingTexts: Self.docs)
         let scores = await engine.scores(for: Self.query)
 
@@ -64,7 +69,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.colbert)))
     func colbertAugmentationLiftsScore() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: modelDirectory(backend: .colbert, quant: .bf16))
+        try await engine.load(directory: Self.localDir(.colbert))
         let doc = ToolCatalog.load().first { $0.name == "search_products" }!.routingText
         await engine.buildIndex(routingTexts: [doc])
         let scores = await engine.scores(for: "show me cheap blue outdoor chairs")
