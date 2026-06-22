@@ -65,7 +65,11 @@ actor RetrievalEngine {
     private var docMultiVectors: [[[Float]]] = []  // colbert: per-tool (L, projDim)
 
     private var bosId: Int { 1 }  // LFM2.5 bos_token_id; CLS == BOS at position 0
-    private var padId: Int32 { 0 }  // LFM2.5 pad_token_id; ColBERT query-augmentation token
+    // ColBERT query-augmentation token = the tokenizer's pad token, which for
+    // LFM2.5-ColBERT is `<|im_end|>` (eos, id 7), NOT `<|pad|>` (id 0). The conv is
+    // (correctly) left unmasked, so augmentation tokens flow through the model: id 0
+    // yields poor expansion vectors (~60%), id 7 matches the reference (~83%).
+    private var padId: Int32 { Int32(tokenizer?.eosTokenId ?? 7) }
     private var head: LFM2BidirectionalConfiguration.MLXHead.Kind {
         config?.mlx.head ?? .embedding
     }

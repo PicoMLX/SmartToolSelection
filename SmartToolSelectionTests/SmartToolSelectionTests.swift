@@ -68,7 +68,8 @@ struct SmartToolSelectionTests {
         let doc = ToolCatalog.load().first { $0.name == "search_products" }!.routingText
         await engine.buildIndex(routingTexts: [doc])
         let scores = await engine.scores(for: "show me cheap blue outdoor chairs")
-        // Un-augmented this query scores ~0.62; query augmentation lifts it to ~0.80.
+        // Un-augmented this query scores ~0.62; query augmentation (with the correct
+        // pad token = eos) lifts it to ~0.83. Guards against a wrong augmentation token.
         #expect(scores[0] > 0.72, "expected augmentation lift, got \(scores[0])")
     }
 
