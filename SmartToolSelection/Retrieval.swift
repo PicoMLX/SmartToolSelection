@@ -227,7 +227,7 @@ final class AppModel {
     private(set) var lastQuery: String = ""
     private(set) var lastLatencyMs: Int = 0
 
-    var backend: Backend = .embedding
+    var backend: Backend = .colbert  // default to ColBERT, matching the web app's mode
     var quant: Quant = .bf16
 
     private var engine = RetrievalEngine()
