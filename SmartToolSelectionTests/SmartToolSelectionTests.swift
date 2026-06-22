@@ -59,6 +59,19 @@ struct SmartToolSelectionTests {
         #expect(!ranked.prefix(2).contains(3))
     }
 
+    @Test(
+        "ColBERT query augmentation lifts the top score (~0.62 -> ~0.8)",
+        .enabled(if: dirExists(.colbert)))
+    func colbertAugmentationLiftsScore() async throws {
+        let engine = RetrievalEngine()
+        try await engine.load(directory: modelDirectory(backend: .colbert, quant: .bf16))
+        let doc = ToolCatalog.load().first { $0.name == "search_products" }!.routingText
+        await engine.buildIndex(routingTexts: [doc])
+        let scores = await engine.scores(for: "show me cheap blue outdoor chairs")
+        // Un-augmented this query scores ~0.62; query augmentation lifts it to ~0.80.
+        #expect(scores[0] > 0.72, "expected augmentation lift, got \(scores[0])")
+    }
+
     @Test("routingText embeds parameter names, enum options, and keyword examples")
     func routingTextComposition() {
         let tool = Tool(
