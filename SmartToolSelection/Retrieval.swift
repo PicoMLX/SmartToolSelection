@@ -90,11 +90,13 @@ enum ModelDownloader {
     }
 
     private static func cacheDirectory(for repoId: String) throws -> URL {
-        let dir = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        var dir = URL.applicationSupportDirectory
             .appending(path: "SmartToolSelection/models")
             .appending(path: repoId)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
         return dir
     }
 
