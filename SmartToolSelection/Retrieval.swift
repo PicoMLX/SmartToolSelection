@@ -11,6 +11,7 @@
 //  The index is built once when a model loads; typing a request encodes the query
 //  and ranks the 151 tools. Everything runs in-process — no server.
 
+import Accelerate
 import Foundation
 import MLX
 import MLXEmbedders
@@ -45,10 +46,17 @@ struct SearchResult: Identifiable, Sendable, Hashable {
     var id: String { tool.id }
 }
 
-/// Where the converted model directories live on disk (the demo loads locally;
-/// the library also supports `mlx-community` registry ids).
-let modelsRoot = URL(
-    fileURLWithPath: "/Users/ronaldmannak/Developer/Projects/Models/mlx-models")
+/// Where the converted model directories live on disk. Override with the
+/// `MODELS_ROOT` environment variable; otherwise default to
+/// `~/Developer/Projects/Models/mlx-models`. (The library also supports
+/// `mlx-community` registry ids for download-based loading.)
+let modelsRoot: URL = {
+    if let override = ProcessInfo.processInfo.environment["MODELS_ROOT"], !override.isEmpty {
+        return URL(fileURLWithPath: override)
+    }
+    return FileManager.default.homeDirectoryForCurrentUser
+        .appending(path: "Developer/Projects/Models/mlx-models")
+}()
 
 func modelDirectory(backend: Backend, quant: Quant) -> URL {
     modelsRoot.appending(component: "\(backend.modelName)-\(quant.suffix)")
@@ -63,6 +71,7 @@ actor RetrievalEngine {
 
     private var docVectors: [[Float]] = []  // embedding: (nTools, hidden)
     private var docMultiVectors: [[[Float]]] = []  // colbert: per-tool (L, projDim)
+    private var skiplistIds: Set<Int32> = []  // colbert: punctuation tokens dropped from doc scoring
 
     private var bosId: Int { 1 }  // LFM2.5 bos_token_id; CLS == BOS at position 0
     // ColBERT query-augmentation token = the tokenizer's pad token, which for
@@ -92,8 +101,29 @@ actor RetrievalEngine {
         self.config = cfg
         self.model = m
         self.tokenizer = tok
+        self.skiplistIds = Self.loadSkiplist(directory: directory, tokenizer: tok)
         self.docVectors = []
         self.docMultiVectors = []
+    }
+
+    /// ColBERT document skiplist: PyLate drops punctuation tokens (from
+    /// `config_sentence_transformers.json`'s `skiplist_words`) from documents before
+    /// MaxSim. Resolve them to single-token ids once at load.
+    private static func loadSkiplist(
+        directory: URL, tokenizer: any Tokenizers.Tokenizer
+    ) -> Set<Int32> {
+        guard
+            let data = try? Data(
+                contentsOf: directory.appending(component: "config_sentence_transformers.json")),
+            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let words = obj["skiplist_words"] as? [String]
+        else { return [] }
+        var ids = Set<Int32>()
+        for word in words {
+            let enc = tokenizer.encode(text: word, addSpecialTokens: false)
+            if enc.count == 1 { ids.insert(Int32(enc[0])) }
+        }
+        return ids
     }
 
     /// Encode every tool's routing text into the index (documents).
@@ -105,9 +135,9 @@ actor RetrievalEngine {
             docVectors = routingTexts.map { encodeEmbedding(prefix + $0) }
         case .colbert:
             let prefix = config.mlx.documentPrefix ?? "[D] "
-            // Documents are not augmented — encode at natural length.
+            // Documents are not augmented; drop skiplist (punctuation) tokens like PyLate.
             docMultiVectors = routingTexts.map {
-                encodeColbert(prefix + $0, padToQueryLength: false)
+                encodeColbert(prefix + $0, padToQueryLength: false, dropSkiplist: true)
             }
         }
     }
@@ -155,7 +185,9 @@ actor RetrievalEngine {
     /// recall and pushing scores up. Documents pass `false` (encoded at natural
     /// length); a long query is truncated to `query_length`. Flip the default to
     /// `false` to see the un-augmented behavior (lower scores, same ranking).
-    private func encodeColbert(_ text: String, padToQueryLength: Bool = true) -> [[Float]] {
+    private func encodeColbert(
+        _ text: String, padToQueryLength: Bool = true, dropSkiplist: Bool = false
+    ) -> [[Float]] {
         guard let model else { return [] }
         var ids = tokenIds(text)
         var attentionMask: MLXArray? = nil
@@ -180,21 +212,27 @@ actor RetrievalEngine {
         let l = pooled.dim(1)
         let d = pooled.dim(2)
         let flat = pooled.reshaped(l, d)
-        return (0 ..< l).map { flat[$0].asArray(Float.self) }
+        let vectors = (0 ..< l).map { flat[$0].asArray(Float.self) }
+        if dropSkiplist, !skiplistIds.isEmpty {
+            // Drop punctuation/skiplist document tokens before they reach MaxSim.
+            return zip(ids, vectors).filter { !skiplistIds.contains($0.0) }.map(\.1)
+        }
+        return vectors
     }
 }
 
 // MARK: - Scoring helpers (plain arrays; cheap for 151 tools)
 
 private func dot(_ a: [Float], _ b: [Float]) -> Float {
-    var s: Float = 0
     let n = min(a.count, b.count)
-    var i = 0
-    while i < n {
-        s += a[i] * b[i]
-        i += 1
+    guard n > 0 else { return 0 }
+    var result: Float = 0
+    a.withUnsafeBufferPointer { ap in
+        b.withUnsafeBufferPointer { bp in
+            vDSP_dotpr(ap.baseAddress!, 1, bp.baseAddress!, 1, &result, vDSP_Length(n))
+        }
     }
-    return s
+    return result
 }
 
 /// MaxSim late interaction: for each query token, the best dot product over the
@@ -236,13 +274,37 @@ final class AppModel {
 
     private var engine = RetrievalEngine()
     private var loadedKey: String?
+    private var loadTask: Task<Void, Never>?
 
     var domains: [String] {
         Array(Set(tools.map(\.domain))).filter { !$0.isEmpty }.sorted()
     }
 
-    /// Load the selected model + build the tool index. Idempotent per backend/quant.
-    func loadIfNeeded() async {
+    /// Load the selected model + build the tool index. Loads are serialized through
+    /// `loadTask` so rapid backend/precision changes can't interleave or land out of
+    /// order; the per-key check keeps it idempotent.
+    func loadIfNeeded() {
+        enqueueLoad()
+    }
+
+    /// Switch backend/quant and reload (serialized).
+    func reload(backend: Backend, quant: Quant) {
+        self.backend = backend
+        self.quant = quant
+        loadedKey = nil
+        results = []
+        enqueueLoad()
+    }
+
+    private func enqueueLoad() {
+        let previous = loadTask
+        loadTask = Task { [weak self] in
+            await previous?.value  // serialize: let any in-flight load finish first
+            await self?.performLoad()
+        }
+    }
+
+    private func performLoad() async {
         let key = "\(backend.rawValue)-\(quant.suffix)"
         if loadedKey == key, case .ready = status { return }
         let dir = modelDirectory(backend: backend, quant: quant)
@@ -257,15 +319,6 @@ final class AppModel {
         } catch {
             status = .failed("\(error.localizedDescription)\n\(dir.path)")
         }
-    }
-
-    /// Switch backend/quant and reload.
-    func reload(backend: Backend, quant: Quant) async {
-        self.backend = backend
-        self.quant = quant
-        loadedKey = nil
-        results = []
-        await loadIfNeeded()
     }
 
     func clearResults() {
@@ -283,6 +336,8 @@ final class AppModel {
         guard case .ready = status else { return }
         let started = Date()
         let scores = await engine.scores(for: trimmed)
+        // Drop stale results: a newer search or a clear superseded this query.
+        guard !Task.isCancelled, query == lastQuery else { return }
         guard scores.count == tools.count else { return }
         let ranked =
             zip(tools, scores)

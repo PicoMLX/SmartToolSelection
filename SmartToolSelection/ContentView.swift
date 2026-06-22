@@ -78,7 +78,7 @@ struct ContentView: View {
         // website). Pin light appearance so `.primary` text (title, tool names, the
         // search field's text) stays dark on the hardcoded light surfaces in dark mode.
         .preferredColorScheme(.light)
-        .task { await model.loadIfNeeded() }
+        .task { model.loadIfNeeded() }
     }
 
     // MARK: Header
@@ -252,7 +252,7 @@ struct ContentView: View {
     }
 
     private func reload(backend: Backend, quant: Quant) {
-        Task { await model.reload(backend: backend, quant: quant) }
+        model.reload(backend: backend, quant: quant)
     }
 }
 
@@ -387,10 +387,11 @@ struct FlowLayout: Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, usedWidth: CGFloat = 0
         for view in subviews {
             let size = view.sizeThatFits(.unspecified)
             if x + size.width > maxWidth, x > 0 {
+                usedWidth = max(usedWidth, x - spacing)  // content width of the completed row
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
@@ -398,7 +399,11 @@ struct FlowLayout: Layout {
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
         }
-        return CGSize(width: maxWidth == .infinity ? x : maxWidth, height: y + rowHeight)
+        usedWidth = max(usedWidth, x - spacing)  // last row
+        // Report the actual content width (not the full proposed width) so the layout
+        // can shrink to fit and centering/backgrounds wrap the chips, not the column.
+        let width = maxWidth.isFinite ? min(maxWidth, usedWidth) : usedWidth
+        return CGSize(width: max(0, width), height: y + rowHeight)
     }
 
     func placeSubviews(

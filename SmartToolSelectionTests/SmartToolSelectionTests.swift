@@ -82,7 +82,8 @@ struct SmartToolSelectionTests {
             parameters: [
                 ToolParameter(
                     name: "price_range", type: "string", description: "",
-                    enumValues: ["under_50", "over_500"], required: false)
+                    enumValues: ["under_50", "over_500"], required: false,
+                    itemsType: nil, itemsEnum: nil)
             ],
             keywords: ["table", "lamp"])
         let rt = tool.routingText

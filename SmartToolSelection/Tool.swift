@@ -15,6 +15,10 @@ struct ToolParameter: Identifiable, Hashable {
     let description: String
     let enumValues: [String]?
     let required: Bool
+    /// For `type: array`, the element schema from JSON-Schema `items` (when the pack
+    /// provides one), so the rendered tool definition tells the LLM the element type.
+    let itemsType: String?
+    let itemsEnum: [String]?
 
     var id: String { name }
     var isEnum: Bool { (enumValues?.isEmpty == false) }
@@ -83,6 +87,11 @@ struct Tool: Identifiable, Hashable {
             var spec = ["\"type\": \"\(esc(p.type))\""]
             if !p.description.isEmpty { spec.append("\"description\": \"\(esc(p.description))\"") }
             if let e = p.enumValues, !e.isEmpty { spec.append("\"enum\": \(arr(e))") }
+            if let itemType = p.itemsType {
+                var item = ["\"type\": \"\(esc(itemType))\""]
+                if let ie = p.itemsEnum, !ie.isEmpty { item.append("\"enum\": \(arr(ie))") }
+                spec.append("\"items\": { \(item.joined(separator: ", ")) }")
+            }
             props.append("      \"\(esc(p.name))\": { \(spec.joined(separator: ", ")) }")
         }
         let required = parameters.filter { $0.required }.map { $0.name }
@@ -135,11 +144,15 @@ enum ToolCatalog {
     }
 
     private static func loadPack(at url: URL) -> [Tool] {
-        guard let data = try? Data(contentsOf: url),
-            let pack = try? JSONDecoder().decode(RawPack.self, from: data)
-        else { return [] }
-        let domain = pack.name ?? url.deletingPathExtension().lastPathComponent
-        return pack.tools.map { $0.tool(domain: domain) }
+        do {
+            let data = try Data(contentsOf: url)
+            let pack = try JSONDecoder().decode(RawPack.self, from: data)
+            let domain = pack.name ?? url.deletingPathExtension().lastPathComponent
+            return pack.tools.map { $0.tool(domain: domain) }
+        } catch {
+            print("ToolCatalog: failed to load \(url.lastPathComponent): \(error)")
+            return []
+        }
     }
 }
 
@@ -171,7 +184,9 @@ private struct RawTool: Decodable {
                 type: entry.1.type ?? "string",
                 description: entry.1.description ?? "",
                 enumValues: entry.1.enumValues,
-                required: required.contains(entry.0))
+                required: required.contains(entry.0),
+                itemsType: entry.1.items?.type,
+                itemsEnum: entry.1.items?.enumValues)
         }
         return Tool(
             name: name, description: description ?? "", domain: domain,
@@ -183,16 +198,38 @@ private struct RawSpec: Decodable {
     let type: String?
     let description: String?
     let enumValues: [String]?
+    let items: RawItems?
 
     enum Keys: String, CodingKey {
-        case type, description
+        case type, description, items
         case enumValues = "enum"
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         type = try c.decodeIfPresent(String.self, forKey: .type)
         description = try c.decodeIfPresent(String.self, forKey: .description)
+        items = try? c.decodeIfPresent(RawItems.self, forKey: .items)
         // enum values may be strings or other scalars; coerce to strings.
+        if let strings = try? c.decodeIfPresent([String].self, forKey: .enumValues) {
+            enumValues = strings
+        } else {
+            enumValues = nil
+        }
+    }
+}
+
+/// The JSON-Schema `items` sub-schema for an array parameter (element type + enum).
+private struct RawItems: Decodable {
+    let type: String?
+    let enumValues: [String]?
+
+    enum Keys: String, CodingKey {
+        case type
+        case enumValues = "enum"
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        type = try c.decodeIfPresent(String.self, forKey: .type)
         if let strings = try? c.decodeIfPresent([String].self, forKey: .enumValues) {
             enumValues = strings
         } else {
