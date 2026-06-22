@@ -59,10 +59,12 @@ struct ContentView: View {
                 header
                 controls
                 searchBar
-                exampleChips
                 statusLine
-                results
+                resultsList
+                exampleChips
+                emptyHint
             }
+            .animation(.snappy, value: model.results)
             .frame(maxWidth: 720)
             .padding(.horizontal, 20)
             .padding(.vertical, 32)
@@ -210,16 +212,24 @@ struct ContentView: View {
         return "Starting…"
     }
 
-    @ViewBuilder private var results: some View {
-        if model.results.isEmpty, case .ready = model.status {
-            Text("Type a request above to retrieve the tools that match ✨")
-                .font(.callout)
-                .foregroundStyle(Brand.textLight)
-                .padding(.top, 24)
-        } else {
+    // Results sit directly under the search box (above the example chips), matching
+    // the website, so the top-5 are visible without scrolling past the chips.
+    @ViewBuilder private var resultsList: some View {
+        if !model.results.isEmpty {
             VStack(spacing: 12) {
                 ForEach(model.results) { ResultCard(result: $0) }
             }
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
+    }
+
+    @ViewBuilder private var emptyHint: some View {
+        if model.results.isEmpty, case .ready = model.status {
+            Text("Type a request, or tap an example to retrieve the matching tools ✨")
+                .font(.callout)
+                .foregroundStyle(Brand.textLight)
+                .multilineTextAlignment(.center)
+                .padding(.top, 8)
         }
     }
 
