@@ -32,7 +32,7 @@ The tool index is built once when a model loads; each keystroke only re-encodes 
 
 ## Models & quantization
 
-Models are downloaded from the [Hugging Face Hub](https://huggingface.co/ronaldmannak) on first run and cached locally; a **Precision** toggle picks the on-device weights. The bf16 checkpoints are ~680–690 MB each. We ran a quant-aware retrieval eval to choose the quantized ship precisions:
+Models are downloaded from the [Hugging Face Hub](https://huggingface.co/mlx-community) on first run and cached locally; a **Precision** toggle picks the on-device weights. The bf16 checkpoints are ~680–690 MB each. We ran a quant-aware retrieval eval to choose the quantized ship precisions:
 
 | Retriever | Quantized | Size | NDCG@10 retention vs bf16 |
 |---|---|---|---|
@@ -62,6 +62,6 @@ Pick a backend (Embedding / ColBERT) and precision (bf16 / int8 / int4) at the t
 
 ## Credits
 
-- **Models** — [LiquidAI](https://huggingface.co/LiquidAI) LFM2.5-Embedding-350M and LFM2.5-ColBERT-350M, converted to MLX ([model repositories](https://huggingface.co/ronaldmannak)).
+- **Models** — [LiquidAI](https://huggingface.co/LiquidAI) LFM2.5-Embedding-350M and LFM2.5-ColBERT-350M, converted to MLX ([model repositories](https://huggingface.co/mlx-community)).
 - **Original demo** — LiquidAI's [ColBERT Tool Selection Space](https://huggingface.co/spaces/LiquidAI/colbert-tool-selection).
 - **On-device inference** — [MLX-Swift](https://github.com/ml-explore/mlx-swift) and [mlx-swift-lm](https://github.com/PicoMLX/mlx-swift-lm).

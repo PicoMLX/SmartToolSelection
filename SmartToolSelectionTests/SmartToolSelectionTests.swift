@@ -19,15 +19,18 @@ struct SmartToolSelectionTests {
     ]
     static let query = "What is the capital of France?"
 
-    // Tests load from the local converted dirs (fast, no network); the app downloads from HF.
-    static let localModelsRoot = URL(
-        fileURLWithPath: "/Users/ronaldmannak/Developer/Projects/Models/mlx-models")
-    static func localDir(_ backend: Backend, _ quant: Quant = .bf16) -> URL {
-        localModelsRoot.appending(component: "\(backend.modelName)-\(quant.suffix)")
+    // Tests reuse whatever the app already downloaded from mlx-community into its
+    // Application Support cache (launch the app once to populate it). A model that
+    // isn't cached makes its test skip, so the suite stays offline and needs no
+    // local checkout path.
+    static func cachedDir(_ backend: Backend, _ quant: Quant = .bf16) -> URL {
+        URL.applicationSupportDirectory
+            .appending(path: "SmartToolSelection/models")
+            .appending(path: modelRepoId(backend: backend, quant: quant))
     }
     static func dirExists(_ backend: Backend) -> Bool {
         FileManager.default.fileExists(
-            atPath: localDir(backend).appending(component: "config.json").path)
+            atPath: cachedDir(backend).appending(component: "config.json").path)
     }
 
     private func order(_ scores: [Float]) -> [Int] {
@@ -39,7 +42,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.embedding)))
     func embeddingRanking() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: Self.localDir(.embedding))
+        try await engine.load(directory: Self.cachedDir(.embedding))
         await engine.buildIndex(routingTexts: Self.docs)
         let scores = await engine.scores(for: Self.query)
 
@@ -54,7 +57,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.colbert)))
     func colbertRanking() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: Self.localDir(.colbert))
+        try await engine.load(directory: Self.cachedDir(.colbert))
         await engine.buildIndex(routingTexts: Self.docs)
         let scores = await engine.scores(for: Self.query)
 
@@ -69,7 +72,7 @@ struct SmartToolSelectionTests {
         .enabled(if: dirExists(.colbert)))
     func colbertAugmentationLiftsScore() async throws {
         let engine = RetrievalEngine()
-        try await engine.load(directory: Self.localDir(.colbert))
+        try await engine.load(directory: Self.cachedDir(.colbert))
         let doc = ToolCatalog.load().first { $0.name == "search_products" }!.routingText
         await engine.buildIndex(routingTexts: [doc])
         let scores = await engine.scores(for: "show me cheap blue outdoor chairs")
