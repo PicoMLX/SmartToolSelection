@@ -1,0 +1,399 @@
+{
+  "name": "support",
+  "description": "Customer-support helpdesk plus team-collaboration tools for an operations team.",
+  "tools": [
+    {
+      "name": "create_ticket",
+      "description": "Open a new support ticket with a priority and category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "billing",
+              "technical",
+              "account",
+              "shipping",
+              "feedback",
+              "bug"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "chat",
+              "phone",
+              "social"
+            ]
+          }
+        },
+        "required": [
+          "subject"
+        ]
+      }
+    },
+    {
+      "name": "update_ticket",
+      "description": "Update the fields of an existing support ticket.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      }
+    },
+    {
+      "name": "close_ticket",
+      "description": "Close a support ticket with a resolution outcome.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "resolved",
+              "duplicate",
+              "wont_fix",
+              "no_response",
+              "by_design"
+            ]
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      }
+    },
+    {
+      "name": "assign_ticket",
+      "description": "Assign a ticket to a support team or queue.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "team": {
+            "type": "string",
+            "enum": [
+              "tier1",
+              "tier2",
+              "engineering",
+              "billing",
+              "success"
+            ]
+          }
+        },
+        "required": [
+          "ticket_id",
+          "team"
+        ]
+      }
+    },
+    {
+      "name": "escalate_ticket",
+      "description": "Escalate a ticket to a higher support tier or manager.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      }
+    },
+    {
+      "name": "search_knowledge_base",
+      "description": "Search internal help articles and documentation for an answer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "keywords": [
+        "how to",
+        "how do I",
+        "how does it work",
+        "how it works",
+        "how is it made",
+        "how it's made",
+        "how to build",
+        "how to make",
+        "how to use",
+        "what is",
+        "what does",
+        "why does",
+        "guide",
+        "tutorial",
+        "instructions",
+        "manual",
+        "walkthrough",
+        "step by step",
+        "steps to",
+        "how do I configure",
+        "configure",
+        "documentation",
+        "docs",
+        "help article",
+        "faq",
+        "knowledge base",
+        "explain",
+        "learn how",
+        "look up",
+        "is there a guide",
+        "return policy",
+        "policy"
+      ]
+    },
+    {
+      "name": "send_reply",
+      "description": "Send a written reply to the customer on a ticket.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "body"
+        ]
+      }
+    },
+    {
+      "name": "schedule_callback",
+      "description": "Schedule a phone callback with the customer.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ]
+      }
+    },
+    {
+      "name": "create_task",
+      "description": "Create an internal task and assign it to a teammate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "keywords": [
+        "make a task",
+        "create a task",
+        "to-do",
+        "todo",
+        "action item",
+        "task to follow up",
+        "follow up task",
+        "assign a task"
+      ]
+    },
+    {
+      "name": "send_message",
+      "description": "Send a message to a teammate or channel on a messaging platform.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "recipient": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "slack",
+              "teams",
+              "email",
+              "sms"
+            ]
+          },
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recipient",
+          "body"
+        ]
+      }
+    },
+    {
+      "name": "schedule_meeting",
+      "description": "Schedule a meeting and pick how it will be held.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "meeting_type": {
+            "type": "string",
+            "enum": [
+              "video",
+              "phone",
+              "in_person"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "share_file",
+      "description": "Share a file and set who is allowed to see it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "team",
+              "organization",
+              "public"
+            ]
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    },
+    {
+      "name": "set_status",
+      "description": "Set the user's availability status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "busy",
+              "away",
+              "do_not_disturb",
+              "offline"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    },
+    {
+      "name": "create_reminder",
+      "description": "Set a reminder that is delivered over a chosen channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "push",
+              "sms"
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "keywords": [
+        "remind me to",
+        "remind me",
+        "set a reminder",
+        "reminder"
+      ]
+    },
+    {
+      "name": "tag_ticket",
+      "description": "Add labels or tags to a support ticket for organization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "tags"
+        ]
+      }
+    }
+  ]
+}

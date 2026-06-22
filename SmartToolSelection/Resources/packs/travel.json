@@ -1,0 +1,172 @@
+{
+  "name": "travel",
+  "description": "Flight, hotel, car, and trip-management tools for an online travel agent.",
+  "tools": [
+    {
+      "name": "search_flights",
+      "description": "Search flights between two cities, filtered by cabin, stops, and sort order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "origin": { "type": "string", "description": "departure city or airport" },
+          "destination": { "type": "string", "description": "arrival city or airport" },
+          "cabin": { "type": "string", "enum": ["economy", "premium_economy", "business", "first"] },
+          "stops": { "type": "string", "enum": ["nonstop", "one_stop", "any"] },
+          "sort": { "type": "string", "enum": ["price", "duration", "departure_time", "arrival_time"] }
+        },
+        "required": ["origin", "destination"]
+      }
+    },
+    {
+      "name": "book_flight",
+      "description": "Book a specific flight that was found in search.",
+      "parameters": {
+        "type": "object",
+        "properties": { "flight_id": { "type": "string" } },
+        "required": ["flight_id"]
+      }
+    },
+    {
+      "name": "cancel_flight",
+      "description": "Cancel a booked flight.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "reason": { "type": "string", "enum": ["schedule_change", "found_cheaper", "plans_changed", "medical", "weather"] }
+        },
+        "required": ["booking_id"]
+      }
+    },
+    {
+      "name": "search_hotels",
+      "description": "Search hotels in a location, filtered by star rating and sort order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "string" },
+          "star_rating": { "type": "string", "enum": ["3", "4", "5"] },
+          "sort": { "type": "string", "enum": ["price", "rating", "distance"] }
+        },
+        "required": ["location"]
+      }
+    },
+    {
+      "name": "book_hotel",
+      "description": "Reserve a room at a specific hotel.",
+      "parameters": {
+        "type": "object",
+        "properties": { "hotel_id": { "type": "string" } },
+        "required": ["hotel_id"]
+      }
+    },
+    {
+      "name": "search_cars",
+      "description": "Search rental cars at a location, filtered by car type.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "string" },
+          "car_type": { "type": "string", "enum": ["economy", "compact", "suv", "luxury", "van", "convertible"] }
+        },
+        "required": ["location"]
+      }
+    },
+    {
+      "name": "book_car",
+      "description": "Reserve a specific rental car.",
+      "parameters": {
+        "type": "object",
+        "properties": { "car_id": { "type": "string" } },
+        "required": ["car_id"]
+      }
+    },
+    {
+      "name": "check_in",
+      "description": "Check in for a booked flight and choose a seat preference.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "seat_preference": { "type": "string", "enum": ["window", "aisle", "middle", "no_preference"] }
+        },
+        "required": ["booking_id"]
+      }
+    },
+    {
+      "name": "add_baggage",
+      "description": "Add baggage to a flight booking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "baggage_type": { "type": "string", "enum": ["carry_on", "checked", "oversized", "sports_equipment"] }
+        },
+        "required": ["booking_id", "baggage_type"]
+      }
+    },
+    {
+      "name": "select_seat",
+      "description": "Choose a specific seat on a booked flight.",
+      "parameters": {
+        "type": "object",
+        "properties": { "booking_id": { "type": "string" }, "seat": { "type": "string" } },
+        "required": ["booking_id", "seat"]
+      }
+    },
+    {
+      "name": "get_trip_status",
+      "description": "Get the current status and itinerary for a trip.",
+      "parameters": {
+        "type": "object",
+        "properties": { "booking_id": { "type": "string" } },
+        "required": ["booking_id"]
+      }
+    },
+    {
+      "name": "request_refund",
+      "description": "Request a refund for a cancelled travel booking.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "refund_method": { "type": "string", "enum": ["original_payment", "travel_credit", "voucher"] }
+        },
+        "required": ["booking_id"]
+      }
+    },
+    {
+      "name": "set_price_alert",
+      "description": "Notify the traveler when a route's fare drops.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "route": { "type": "string" },
+          "channel": { "type": "string", "enum": ["email", "sms", "push"] }
+        },
+        "required": ["route"]
+      }
+    },
+    {
+      "name": "get_visa_requirements",
+      "description": "Look up visa and entry requirements for a destination country.",
+      "parameters": {
+        "type": "object",
+        "properties": { "country": { "type": "string" }, "nationality": { "type": "string" } },
+        "required": ["country"]
+      }
+    },
+    {
+      "name": "book_airport_transfer",
+      "description": "Book ground transport between the airport and the hotel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "booking_id": { "type": "string" },
+          "transfer_type": { "type": "string", "enum": ["shared_shuttle", "private_car", "taxi", "rideshare"] }
+        },
+        "required": ["booking_id", "transfer_type"]
+      }
+    }
+  ]
+}
