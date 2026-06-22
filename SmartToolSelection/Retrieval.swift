@@ -65,6 +65,7 @@ actor RetrievalEngine {
     private var docMultiVectors: [[[Float]]] = []  // colbert: per-tool (L, projDim)
 
     private var bosId: Int { 1 }  // LFM2.5 bos_token_id; CLS == BOS at position 0
+    private var padId: Int32 { 0 }  // LFM2.5 pad_token_id; ColBERT query-augmentation token
     private var head: LFM2BidirectionalConfiguration.MLXHead.Kind {
         config?.mlx.head ?? .embedding
     }
@@ -100,7 +101,10 @@ actor RetrievalEngine {
             docVectors = routingTexts.map { encodeEmbedding(prefix + $0) }
         case .colbert:
             let prefix = config.mlx.documentPrefix ?? "[D] "
-            docMultiVectors = routingTexts.map { encodeColbert(prefix + $0) }
+            // Documents are not augmented — encode at natural length.
+            docMultiVectors = routingTexts.map {
+                encodeColbert(prefix + $0, padToQueryLength: false)
+            }
         }
     }
 
@@ -138,11 +142,36 @@ actor RetrievalEngine {
     }
 
     /// Per-token, L2-normalized projection vectors: a (L, projDim) matrix.
-    private func encodeColbert(_ text: String) -> [[Float]] {
+    ///
+    /// `padToQueryLength` enables ColBERT **query augmentation** (on by default, the
+    /// trained query behavior): the input is truncated/padded to `query_length` (32)
+    /// with pad tokens. Those positions are masked as attention *keys* (attend-to =
+    /// off) but still emit query vectors that are scored in MaxSim — extra "soft
+    /// expansion" slots that the model contextualizes toward relevant terms, raising
+    /// recall and pushing scores up. Documents pass `false` (encoded at natural
+    /// length); a long query is truncated to `query_length`. Flip the default to
+    /// `false` to see the un-augmented behavior (lower scores, same ranking).
+    private func encodeColbert(_ text: String, padToQueryLength: Bool = true) -> [[Float]] {
         guard let model else { return [] }
-        let ids = MLXArray(tokenIds(text)).reshaped(1, -1)
-        let out = model(ids)
-        let pooled = Pooling(strategy: .none)(out, normalize: true)  // (1, L, projDim) per-token L2
+        var ids = tokenIds(text)
+        var attentionMask: MLXArray? = nil
+
+        if padToQueryLength, let queryLength = config?.mlx.queryLength {
+            if ids.count > queryLength { ids = Array(ids.prefix(queryLength)) }  // truncate
+            var mask = [Int32](repeating: 1, count: ids.count)
+            while ids.count < queryLength {  // augmentation positions: pad id, attend-to off
+                ids.append(padId)
+                mask.append(0)
+            }
+            attentionMask = MLXArray(mask).reshaped(1, -1)
+        }
+
+        // Raw per-token vectors (the encoder leaves masked positions un-zeroed so the
+        // augmentation tokens survive), then per-token L2 normalization.
+        let out = model(
+            MLXArray(ids).reshaped(1, -1),
+            positionIds: nil, tokenTypeIds: nil, attentionMask: attentionMask)
+        let pooled = Pooling(strategy: .none)(out, normalize: true)  // (1, L, projDim)
         pooled.eval()
         let l = pooled.dim(1)
         let d = pooled.dim(2)
