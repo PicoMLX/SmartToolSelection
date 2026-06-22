@@ -1,18 +1,86 @@
-//
 //  SmartToolSelectionTests.swift
-//  SmartToolSelectionTests
-//
-//  Created by Ronald Mannak on 6/21/26.
-//
+//  End-to-end checks for the on-device retrieval engine. Run via Xcode/xcodebuild
+//  (the MLX Metal library is only bundled there). The retrieval tests are skipped
+//  automatically when the local model directories are absent.
 
+import Foundation
 import Testing
+
+@testable import SmartToolSelection
 
 struct SmartToolSelectionTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-        // Swift Testing Documentation
-        // https://developer.apple.com/documentation/testing
+    static let docs = [
+        "Paris is the capital and most populous city of France.",
+        "Berlin is the capital of Germany and a major cultural hub.",
+        "The Eiffel Tower, located in Paris, was completed in 1889.",
+        "Bananas are an excellent dietary source of potassium.",
+        "France is a country in Western Europe known for its cuisine.",
+    ]
+    static let query = "What is the capital of France?"
+
+    static func dirExists(_ backend: Backend) -> Bool {
+        FileManager.default.fileExists(
+            atPath: modelDirectory(backend: backend, quant: .bf16)
+                .appending(component: "config.json").path)
     }
 
+    private func order(_ scores: [Float]) -> [Int] {
+        scores.enumerated().sorted { $0.element > $1.element }.map(\.offset)
+    }
+
+    @Test(
+        "Embedding backend ranks France/Paris above an unrelated doc",
+        .enabled(if: dirExists(.embedding)))
+    func embeddingRanking() async throws {
+        let engine = RetrievalEngine()
+        try await engine.load(directory: modelDirectory(backend: .embedding, quant: .bf16))
+        await engine.buildIndex(routingTexts: Self.docs)
+        let scores = await engine.scores(for: Self.query)
+
+        #expect(scores.count == Self.docs.count)
+        let ranked = order(scores)
+        #expect([0, 2, 4].contains(ranked[0]))  // a France/Paris doc is top
+        #expect(!ranked.prefix(2).contains(3))  // bananas is not near the top
+    }
+
+    @Test(
+        "ColBERT backend ranks France/Paris above an unrelated doc",
+        .enabled(if: dirExists(.colbert)))
+    func colbertRanking() async throws {
+        let engine = RetrievalEngine()
+        try await engine.load(directory: modelDirectory(backend: .colbert, quant: .bf16))
+        await engine.buildIndex(routingTexts: Self.docs)
+        let scores = await engine.scores(for: Self.query)
+
+        #expect(scores.count == Self.docs.count)
+        let ranked = order(scores)
+        #expect([0, 2, 4].contains(ranked[0]))
+        #expect(!ranked.prefix(2).contains(3))
+    }
+
+    @Test("routingText embeds parameter names, enum options, and keyword examples")
+    func routingTextComposition() {
+        let tool = Tool(
+            name: "search_products",
+            description: "Search the catalog.",
+            domain: "ecommerce",
+            parameters: [
+                ToolParameter(
+                    name: "price_range", type: "string", description: "",
+                    enumValues: ["under_50", "over_500"], required: false)
+            ],
+            keywords: ["table", "lamp"])
+        let rt = tool.routingText
+        #expect(rt.contains("parameters: price range"))
+        #expect(rt.contains("options: under 50, over 500"))
+        #expect(rt.contains("examples: table, lamp"))
+    }
+
+    @Test("Catalog loads all 151 bundled tools across 7 domains")
+    func catalogLoads() {
+        let tools = ToolCatalog.load()
+        #expect(tools.count == 151)
+        #expect(Set(tools.map(\.domain)).count == 7)
+    }
 }

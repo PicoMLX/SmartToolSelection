@@ -1,0 +1,432 @@
+{
+  "name": "devops",
+  "description": "CI/CD, cloud infra, Kubernetes, and incident-response tools for a platform team.",
+  "tools": [
+    {
+      "name": "deploy_service",
+      "description": "Deploy a service build to an environment using a chosen rollout strategy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "name of the service to deploy"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "dev",
+              "staging",
+              "production",
+              "canary"
+            ]
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "rolling",
+              "blue_green",
+              "canary",
+              "recreate"
+            ]
+          }
+        },
+        "required": [
+          "service",
+          "environment"
+        ]
+      },
+      "keywords": [
+        "ship it",
+        "ship to prod",
+        "ship to production",
+        "push to production",
+        "push to prod",
+        "go live",
+        "roll out",
+        "release to production",
+        "deploy to prod"
+      ]
+    },
+    {
+      "name": "rollback_deployment",
+      "description": "Roll a service back to a previous known-good release.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "dev",
+              "staging",
+              "production",
+              "canary"
+            ]
+          }
+        },
+        "required": [
+          "service"
+        ]
+      }
+    },
+    {
+      "name": "scale_service",
+      "description": "Change the number of running replicas for a service.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "replicas": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "service",
+          "replicas"
+        ]
+      }
+    },
+    {
+      "name": "get_service_logs",
+      "description": "Fetch recent log lines for a service, filtered by severity level.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "debug",
+              "info",
+              "warning",
+              "error",
+              "critical"
+            ]
+          },
+          "since": {
+            "type": "string",
+            "description": "start time, e.g. '30m' or a timestamp"
+          }
+        },
+        "required": [
+          "service"
+        ]
+      },
+      "keywords": [
+        "error logs",
+        "throwing errors",
+        "errors",
+        "exceptions",
+        "stack trace",
+        "logs",
+        "crash logs",
+        "tail the logs",
+        "what's in the logs"
+      ]
+    },
+    {
+      "name": "restart_pod",
+      "description": "Restart a specific Kubernetes pod.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pod_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pod_name"
+        ]
+      }
+    },
+    {
+      "name": "list_pods",
+      "description": "List Kubernetes pods, optionally filtered by their current status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "pending",
+              "crashloopbackoff",
+              "terminated",
+              "all"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "create_incident",
+      "description": "Open a new incident with a severity level so responders are notified.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "sev1",
+              "sev2",
+              "sev3",
+              "sev4"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "severity"
+        ]
+      },
+      "keywords": [
+        "outage",
+        "the site is down",
+        "site is down",
+        "server is down",
+        "it's down",
+        "on fire",
+        "everything is broken",
+        "production is broken",
+        "sev1",
+        "sev2",
+        "p1",
+        "major incident",
+        "declare an incident",
+        "emergency"
+      ]
+    },
+    {
+      "name": "resolve_incident",
+      "description": "Mark an active incident as resolved and close it out.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id"
+        ]
+      }
+    },
+    {
+      "name": "page_oncall",
+      "description": "Page the on-call engineer for a specific team.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "backend",
+              "frontend",
+              "data",
+              "security"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team"
+        ]
+      }
+    },
+    {
+      "name": "run_pipeline",
+      "description": "Trigger a CI/CD pipeline run for a branch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pipeline": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pipeline"
+        ]
+      }
+    },
+    {
+      "name": "get_metrics",
+      "description": "Query a resource utilization metric over a time window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string",
+            "enum": [
+              "cpu",
+              "memory",
+              "disk",
+              "network",
+              "latency"
+            ]
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "5m",
+              "1h",
+              "24h",
+              "7d"
+            ]
+          }
+        },
+        "required": [
+          "service",
+          "resource"
+        ]
+      }
+    },
+    {
+      "name": "set_alert",
+      "description": "Create a monitoring alert that fires to a notification channel.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "slack",
+              "pagerduty",
+              "email",
+              "webhook"
+            ]
+          }
+        },
+        "required": [
+          "metric"
+        ]
+      }
+    },
+    {
+      "name": "provision_resource",
+      "description": "Provision a new cloud resource with a specific provider.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "aws",
+              "gcp",
+              "azure"
+            ]
+          },
+          "resource_type": {
+            "type": "string",
+            "enum": [
+              "vm",
+              "database",
+              "bucket",
+              "load_balancer",
+              "cache"
+            ]
+          }
+        },
+        "required": [
+          "provider",
+          "resource_type"
+        ]
+      }
+    },
+    {
+      "name": "tear_down_resource",
+      "description": "Decommission and delete a provisioned cloud resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id"
+        ]
+      }
+    },
+    {
+      "name": "update_dns_record",
+      "description": "Create or update a DNS record for a domain.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "record_type": {
+            "type": "string",
+            "enum": [
+              "a",
+              "aaaa",
+              "cname",
+              "mx",
+              "txt"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain",
+          "record_type",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "grant_access",
+      "description": "Grant a user an IAM role on a resource.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "viewer",
+              "editor",
+              "admin",
+              "owner"
+            ]
+          }
+        },
+        "required": [
+          "user",
+          "role"
+        ]
+      }
+    }
+  ]
+}

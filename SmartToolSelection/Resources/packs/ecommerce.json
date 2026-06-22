@@ -1,0 +1,180 @@
+{
+  "name": "ecommerce",
+  "description": "Storefront + order-management tools for a home-goods retailer.",
+  "tools": [
+    {
+      "name": "search_products",
+      "description": "Search the product catalog by keyword and narrow results with category, color, price, and sort filters.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "free-text search terms" },
+          "category": { "type": "string", "enum": ["furniture", "lighting", "rugs", "decor", "outdoor", "bedding", "kitchen", "storage"] },
+          "color": { "type": "string", "enum": ["black", "white", "gray", "blue", "green", "red", "beige", "brown", "gold"] },
+          "price_range": { "type": "string", "enum": ["under_50", "50_to_150", "150_to_500", "over_500"] },
+          "sort": { "type": "string", "enum": ["relevance", "price_low_to_high", "price_high_to_low", "rating", "newest"] }
+        },
+        "required": ["query"]
+      },
+      "keywords": ["table", "dining table", "coffee table", "chair", "armchair", "sofa", "couch", "desk", "bookshelf", "shelf", "cabinet", "wardrobe", "dresser", "nightstand", "stool", "bench", "lamp", "light fixture", "chandelier", "mirror", "rug", "carpet", "curtains", "pillow", "cushion", "blanket", "vase", "cookware", "dishes", "plates", "pots", "pans"]
+    },
+    {
+      "name": "get_product_details",
+      "description": "Fetch the full specification, photos, dimensions, and price for one product.",
+      "parameters": {
+        "type": "object",
+        "properties": { "product_id": { "type": "string", "description": "catalog id of the product" } },
+        "required": ["product_id"]
+      }
+    },
+    {
+      "name": "check_inventory",
+      "description": "Check whether a product is in stock, optionally for a specific store or region.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "string" },
+          "fulfillment": { "type": "string", "enum": ["ship_to_home", "pickup_in_store", "same_day_delivery"] }
+        },
+        "required": ["product_id"]
+      }
+    },
+    {
+      "name": "add_to_cart",
+      "description": "Add a product to the shopping cart with a chosen quantity.",
+      "parameters": {
+        "type": "object",
+        "properties": { "product_id": { "type": "string" }, "quantity": { "type": "integer" } },
+        "required": ["product_id"]
+      }
+    },
+    {
+      "name": "remove_from_cart",
+      "description": "Remove a product from the shopping cart.",
+      "parameters": {
+        "type": "object",
+        "properties": { "product_id": { "type": "string" } },
+        "required": ["product_id"]
+      }
+    },
+    {
+      "name": "apply_coupon",
+      "description": "Apply a promo or discount code to the current cart before checkout.",
+      "parameters": {
+        "type": "object",
+        "properties": { "coupon_code": { "type": "string", "description": "the promo code to redeem" } },
+        "required": ["coupon_code"]
+      }
+    },
+    {
+      "name": "place_order",
+      "description": "Check out the current cart and place the order for payment and fulfillment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payment_method": { "type": "string", "enum": ["card_on_file", "paypal", "gift_card", "affirm"] }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "cancel_order",
+      "description": "Cancel an order that has not shipped yet.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "reason": { "type": "string", "enum": ["ordered_by_mistake", "found_better_price", "shipping_too_slow", "changed_mind"] }
+        },
+        "required": ["order_id"]
+      }
+    },
+    {
+      "name": "track_shipment",
+      "description": "Get the current delivery status and estimated arrival for an order.",
+      "parameters": {
+        "type": "object",
+        "properties": { "order_id": { "type": "string" } },
+        "required": ["order_id"]
+      }
+    },
+    {
+      "name": "initiate_return",
+      "description": "Start a return for a delivered item and generate a return shipping label.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "reason": { "type": "string", "enum": ["damaged", "defective", "wrong_item", "not_as_described", "no_longer_needed", "too_big", "too_small"] }
+        },
+        "required": ["order_id", "reason"]
+      }
+    },
+    {
+      "name": "request_refund",
+      "description": "Request a refund to the original payment method for a returned or cancelled order.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string" },
+          "refund_to": { "type": "string", "enum": ["original_payment", "store_credit"] }
+        },
+        "required": ["order_id"]
+      }
+    },
+    {
+      "name": "write_review",
+      "description": "Submit a star rating and written review for a purchased product.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "string" },
+          "rating": { "type": "string", "enum": ["1", "2", "3", "4", "5"] },
+          "body": { "type": "string", "description": "the review text" }
+        },
+        "required": ["product_id", "rating"]
+      }
+    },
+    {
+      "name": "get_recommendations",
+      "description": "Get personalized product recommendations, optionally scoped to a category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string", "enum": ["furniture", "lighting", "rugs", "decor", "outdoor", "bedding", "kitchen", "storage"] }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "compare_products",
+      "description": "Build a side-by-side comparison of two or more products' specs and prices.",
+      "parameters": {
+        "type": "object",
+        "properties": { "product_ids": { "type": "array", "description": "list of product ids to compare" } },
+        "required": ["product_ids"]
+      }
+    },
+    {
+      "name": "update_shipping_address",
+      "description": "Change the shipping address on an order that has not shipped.",
+      "parameters": {
+        "type": "object",
+        "properties": { "order_id": { "type": "string" }, "address": { "type": "string", "description": "the new shipping address" } },
+        "required": ["order_id", "address"]
+      }
+    },
+    {
+      "name": "subscribe_price_alert",
+      "description": "Notify the customer when a product's price drops below a target.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "string" },
+          "channel": { "type": "string", "enum": ["email", "sms", "push"] }
+        },
+        "required": ["product_id"]
+      }
+    }
+  ]
+}

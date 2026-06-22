@@ -1,0 +1,558 @@
+{
+  "name": "healthcare",
+  "description": "Patient-facing scheduling, records, prescriptions, and insurance tools (FHIR-style).",
+  "tools": [
+    {
+      "name": "book_appointment",
+      "description": "Schedule a medical appointment with a provider.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "visit_type": {
+            "type": "string",
+            "enum": [
+              "in_person",
+              "telehealth",
+              "urgent_care",
+              "follow_up"
+            ]
+          },
+          "specialty": {
+            "type": "string",
+            "enum": [
+              "primary_care",
+              "cardiology",
+              "dermatology",
+              "pediatrics",
+              "orthopedics",
+              "mental_health"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "cancel_appointment",
+      "description": "Cancel a scheduled appointment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "feeling_better",
+              "scheduling_conflict",
+              "found_other_provider",
+              "cost",
+              "transportation"
+            ]
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "reschedule_appointment",
+      "description": "Move an existing appointment to a new time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_id"
+        ]
+      }
+    },
+    {
+      "name": "request_prescription_refill",
+      "description": "Request a refill for an existing prescription.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "medication"
+        ]
+      }
+    },
+    {
+      "name": "check_prescription_status",
+      "description": "Check whether a prescription is ready at the pharmacy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "filled",
+              "denied",
+              "expired"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_lab_results",
+      "description": "Retrieve results from completed lab tests.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_type": {
+            "type": "string",
+            "enum": [
+              "blood_panel",
+              "urinalysis",
+              "imaging",
+              "biopsy",
+              "covid",
+              "allergy"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "order_lab_test",
+      "description": "Order a new laboratory or diagnostic test.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_type": {
+            "type": "string",
+            "enum": [
+              "blood_panel",
+              "urinalysis",
+              "imaging",
+              "biopsy",
+              "covid",
+              "allergy"
+            ]
+          }
+        },
+        "required": [
+          "test_type"
+        ]
+      }
+    },
+    {
+      "name": "get_medical_records",
+      "description": "Retrieve the patient's medical record history.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "share_records_with_provider",
+      "description": "Share medical records with another provider or clinic.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ]
+      }
+    },
+    {
+      "name": "message_provider",
+      "description": "Send a secure message to the care team.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "routine",
+              "urgent",
+              "emergency"
+            ]
+          }
+        },
+        "required": [
+          "body"
+        ]
+      }
+    },
+    {
+      "name": "get_vitals_history",
+      "description": "View recorded vital-sign measurements over time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string",
+            "enum": [
+              "blood_pressure",
+              "heart_rate",
+              "weight",
+              "glucose",
+              "temperature",
+              "oxygen"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "log_symptom",
+      "description": "Record a symptom the patient is experiencing.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symptom": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "mild",
+              "moderate",
+              "severe"
+            ]
+          }
+        },
+        "required": [
+          "symptom"
+        ]
+      }
+    },
+    {
+      "name": "find_provider",
+      "description": "Search for a doctor or clinic by specialty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specialty": {
+            "type": "string",
+            "enum": [
+              "primary_care",
+              "cardiology",
+              "dermatology",
+              "pediatrics",
+              "orthopedics",
+              "mental_health"
+            ]
+          }
+        },
+        "required": []
+      },
+      "keywords": [
+        "see a doctor",
+        "find a doctor",
+        "need a doctor",
+        "doctor near me",
+        "find a specialist",
+        "I'm sick",
+        "find a clinic"
+      ]
+    },
+    {
+      "name": "get_insurance_coverage",
+      "description": "Look up what the patient's insurance plan covers.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "submit_insurance_claim",
+      "description": "File an insurance claim for a service received.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_type": {
+            "type": "string",
+            "enum": [
+              "medical",
+              "dental",
+              "vision",
+              "pharmacy"
+            ]
+          }
+        },
+        "required": [
+          "claim_type"
+        ]
+      }
+    },
+    {
+      "name": "check_claim_status",
+      "description": "Check the status of a submitted insurance claim.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "approved",
+              "denied",
+              "paid"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "estimate_procedure_cost",
+      "description": "Estimate the out-of-pocket cost of a procedure.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "procedure": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "procedure"
+        ]
+      }
+    },
+    {
+      "name": "request_referral",
+      "description": "Request a referral to a specialist.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specialty": {
+            "type": "string",
+            "enum": [
+              "cardiology",
+              "dermatology",
+              "orthopedics",
+              "neurology",
+              "mental_health",
+              "endocrinology"
+            ]
+          }
+        },
+        "required": [
+          "specialty"
+        ]
+      }
+    },
+    {
+      "name": "get_immunization_record",
+      "description": "Retrieve the patient's vaccination history.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "schedule_vaccination",
+      "description": "Book a vaccination appointment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "vaccine": {
+            "type": "string",
+            "enum": [
+              "flu",
+              "covid",
+              "tdap",
+              "shingles",
+              "hpv"
+            ]
+          }
+        },
+        "required": [
+          "vaccine"
+        ]
+      }
+    },
+    {
+      "name": "set_medication_reminder",
+      "description": "Set reminders to take a medication.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "medication": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "once_daily",
+              "twice_daily",
+              "weekly",
+              "as_needed"
+            ]
+          }
+        },
+        "required": [
+          "medication"
+        ]
+      }
+    },
+    {
+      "name": "get_care_plan",
+      "description": "View the patient's current care or treatment plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "request_medical_leave_note",
+      "description": "Request a doctor's note for time off work or school.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "find_pharmacy",
+      "description": "Find a pharmacy near a location.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "update_emergency_contact",
+      "description": "Update the patient's emergency contact.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "contact_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_name"
+        ]
+      }
+    },
+    {
+      "name": "pay_medical_bill",
+      "description": "Pay an outstanding medical bill.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "bill_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "bill_id"
+        ]
+      }
+    },
+    {
+      "name": "enroll_in_program",
+      "description": "Enroll the patient in a health management program.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "enum": [
+              "diabetes",
+              "weight_management",
+              "mental_health",
+              "smoking_cessation",
+              "cardiac_rehab"
+            ]
+          }
+        },
+        "required": [
+          "program"
+        ]
+      }
+    },
+    {
+      "name": "request_second_opinion",
+      "description": "Request a second medical opinion on a diagnosis.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "specialty": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "update_pharmacy_preference",
+      "description": "Set the patient's preferred pharmacy for prescriptions.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "pharmacy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pharmacy"
+        ]
+      }
+    },
+    {
+      "name": "get_appointment_reminders",
+      "description": "View or configure upcoming appointment reminders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "push",
+              "call"
+            ]
+          }
+        },
+        "required": []
+      }
+    }
+  ]
+}

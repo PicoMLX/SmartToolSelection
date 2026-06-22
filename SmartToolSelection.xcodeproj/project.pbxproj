@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F8874DE22FE8EC3C00454172 /* MLXEmbedders in Frameworks */ = {isa = PBXBuildFile; productRef = F8874DE12FE8EC3C00454172 /* MLXEmbedders */; };
+		F8874DE42FE8EC3C00454172 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = F8874DE32FE8EC3C00454172 /* MLXLMCommon */; };
+		FA0000000000000000000A03 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = FA0000000000000000000A02 /* Transformers */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		F8874DB82FE8C2E900454172 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +58,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F8874DE42FE8EC3C00454172 /* MLXLMCommon in Frameworks */,
+				F8874DE22FE8EC3C00454172 /* MLXEmbedders in Frameworks */,
+				FA0000000000000000000A03 /* Transformers in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +121,9 @@
 			);
 			name = SmartToolSelection;
 			packageProductDependencies = (
+				F8874DE12FE8EC3C00454172 /* MLXEmbedders */,
+				F8874DE32FE8EC3C00454172 /* MLXLMCommon */,
+				FA0000000000000000000A02 /* Transformers */,
 			);
 			productName = SmartToolSelection;
 			productReference = F8874DAA2FE8C2E600454172 /* SmartToolSelection.app */;
@@ -195,6 +207,10 @@
 			);
 			mainGroup = F8874DA12FE8C2E600454172;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F8874DE02FE8EC3C00454172 /* XCLocalSwiftPackageReference "../../PicoAIHomelab/mlx-swift-lm" */,
+				FA0000000000000000000A01 /* XCRemoteSwiftPackageReference "swift-transformers" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F8874DAB2FE8C2E600454172 /* Products */;
 			projectDirPath = "";
@@ -393,7 +409,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TPKP4XK352;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -437,7 +453,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TPKP4XK352;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -615,6 +631,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F8874DE02FE8EC3C00454172 /* XCLocalSwiftPackageReference "../../PicoAIHomelab/mlx-swift-lm" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../PicoAIHomelab/mlx-swift-lm";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		FA0000000000000000000A01 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.1.18;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F8874DE12FE8EC3C00454172 /* MLXEmbedders */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MLXEmbedders;
+		};
+		F8874DE32FE8EC3C00454172 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MLXLMCommon;
+		};
+		FA0000000000000000000A02 /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FA0000000000000000000A01 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Transformers;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F8874DA22FE8C2E600454172 /* Project object */;
 }

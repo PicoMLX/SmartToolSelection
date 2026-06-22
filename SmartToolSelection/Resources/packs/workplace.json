@@ -1,0 +1,568 @@
+{
+  "name": "workplace",
+  "description": "HR, payroll, and IT/identity tools for employees (Workday / Okta / Jira style).",
+  "tools": [
+    {
+      "name": "submit_pto_request",
+      "description": "Request paid time off.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "leave_type": {
+            "type": "string",
+            "enum": [
+              "vacation",
+              "sick",
+              "personal",
+              "parental",
+              "bereavement",
+              "jury_duty"
+            ]
+          }
+        },
+        "required": [
+          "leave_type"
+        ]
+      },
+      "keywords": [
+        "time off",
+        "take time off",
+        "need time off",
+        "request time off",
+        "book a vacation",
+        "take a vacation",
+        "going on vacation",
+        "request leave",
+        "take leave",
+        "book holiday",
+        "out of office next week"
+      ]
+    },
+    {
+      "name": "approve_pto_request",
+      "description": "Approve or deny a direct report's time-off request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      }
+    },
+    {
+      "name": "check_pto_balance",
+      "description": "Check remaining time-off balance.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "leave_type": {
+            "type": "string",
+            "enum": [
+              "vacation",
+              "sick",
+              "personal"
+            ]
+          }
+        },
+        "required": []
+      },
+      "keywords": [
+        "how many vacation days",
+        "vacation days left",
+        "days off left",
+        "pto balance",
+        "how much pto",
+        "leave balance",
+        "days remaining",
+        "how many days do I have left"
+      ]
+    },
+    {
+      "name": "submit_expense_report",
+      "description": "Submit business expenses for reimbursement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "travel",
+              "meals",
+              "lodging",
+              "software",
+              "equipment",
+              "training"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "approve_expense_report",
+      "description": "Approve a team member's expense report.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id"
+        ]
+      }
+    },
+    {
+      "name": "get_payslip",
+      "description": "Retrieve a pay statement for a pay period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "update_direct_deposit",
+      "description": "Update the bank account for payroll deposits.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_number"
+        ]
+      }
+    },
+    {
+      "name": "enroll_benefits",
+      "description": "Enroll in or change a benefits plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": [
+              "health",
+              "dental",
+              "vision",
+              "401k",
+              "hsa",
+              "fsa"
+            ]
+          }
+        },
+        "required": [
+          "plan"
+        ]
+      }
+    },
+    {
+      "name": "onboard_employee",
+      "description": "Start the onboarding workflow for a new hire.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_name"
+        ]
+      }
+    },
+    {
+      "name": "offboard_employee",
+      "description": "Start the offboarding workflow for a departing employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "employee_id"
+        ]
+      }
+    },
+    {
+      "name": "provision_laptop",
+      "description": "Order and provision a work device for an employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "device_type": {
+            "type": "string",
+            "enum": [
+              "macbook",
+              "windows_laptop",
+              "linux_workstation",
+              "tablet"
+            ]
+          }
+        },
+        "required": [
+          "device_type"
+        ]
+      }
+    },
+    {
+      "name": "reset_password",
+      "description": "Reset an employee's account password.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "grant_app_access",
+      "description": "Grant an employee access to a SaaS application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string",
+            "enum": [
+              "email",
+              "crm",
+              "vpn",
+              "design_suite",
+              "code_repo",
+              "analytics"
+            ]
+          }
+        },
+        "required": [
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "revoke_app_access",
+      "description": "Revoke an employee's access to an application.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "request_software_license",
+      "description": "Request a paid software license.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "software": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "software"
+        ]
+      }
+    },
+    {
+      "name": "book_meeting_room",
+      "description": "Reserve a meeting room on site.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {
+            "type": "string",
+            "enum": [
+              "huddle",
+              "conference",
+              "boardroom",
+              "phone_booth"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "reserve_desk",
+      "description": "Book a hot desk for a day at an office.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "enum": [
+              "hq",
+              "downtown",
+              "satellite",
+              "remote_hub"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "submit_it_ticket",
+      "description": "Open an IT support ticket for a technical problem.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "hardware",
+              "software",
+              "network",
+              "access",
+              "security"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "order_office_equipment",
+      "description": "Order peripherals or office equipment for an employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string",
+            "enum": [
+              "monitor",
+              "keyboard",
+              "headset",
+              "docking_station",
+              "chair",
+              "standing_desk"
+            ]
+          }
+        },
+        "required": [
+          "item"
+        ]
+      },
+      "keywords": [
+        "printer paper",
+        "office supplies",
+        "supplies",
+        "stationery",
+        "printer",
+        "monitor",
+        "keyboard",
+        "mouse",
+        "cables",
+        "office equipment",
+        "more paper"
+      ]
+    },
+    {
+      "name": "update_employee_profile",
+      "description": "Update an employee's HR profile details.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "employee_id": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "schedule_performance_review",
+      "description": "Schedule a performance review cycle.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cycle": {
+            "type": "string",
+            "enum": [
+              "mid_year",
+              "annual",
+              "probation",
+              "promotion"
+            ]
+          }
+        },
+        "required": [
+          "cycle"
+        ]
+      }
+    },
+    {
+      "name": "submit_feedback",
+      "description": "Give feedback about a colleague.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "praise",
+              "constructive",
+              "upward"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "enroll_training",
+      "description": "Enroll in a learning or training course.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "self_paced",
+              "instructor_led",
+              "webinar",
+              "certification"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "report_security_incident",
+      "description": "Report a security or phishing incident to the security team.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        "required": [
+          "severity"
+        ]
+      }
+    },
+    {
+      "name": "request_employment_verification",
+      "description": "Request a letter verifying employment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "set_out_of_office",
+      "description": "Set an out-of-office auto-reply and status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "request_business_cards",
+      "description": "Order printed business cards for an employee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "nominate_for_award",
+      "description": "Nominate a colleague for a recognition award.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "nominee": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nominee"
+        ]
+      }
+    },
+    {
+      "name": "update_tax_withholding",
+      "description": "Update payroll tax withholding elections.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "filing_status": {
+            "type": "string",
+            "enum": [
+              "single",
+              "married_jointly",
+              "married_separately",
+              "head_of_household"
+            ]
+          }
+        },
+        "required": []
+      }
+    }
+  ]
+}

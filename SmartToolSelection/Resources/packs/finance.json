@@ -1,0 +1,620 @@
+{
+  "name": "finance",
+  "description": "Personal and small-business banking, payments, and accounting tools.",
+  "tools": [
+    {
+      "name": "get_account_balance",
+      "description": "Get the current balance for one of the customer's accounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "checking",
+              "savings",
+              "credit",
+              "investment",
+              "loan"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_transaction_history",
+      "description": "List recent transactions, optionally filtered by spending category and time period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "groceries",
+              "dining",
+              "travel",
+              "utilities",
+              "shopping",
+              "income"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "ytd",
+              "1y"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "transfer_funds",
+      "description": "Move money between accounts or to another person.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "transfer_type": {
+            "type": "string",
+            "enum": [
+              "internal",
+              "ach",
+              "wire",
+              "instant"
+            ]
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "pay_bill",
+      "description": "Pay a bill to a registered payee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payee": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "payee",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "schedule_payment",
+      "description": "Schedule a recurring or future-dated payment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payee": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "once",
+              "weekly",
+              "biweekly",
+              "monthly",
+              "quarterly"
+            ]
+          }
+        },
+        "required": [
+          "payee"
+        ]
+      }
+    },
+    {
+      "name": "dispute_transaction",
+      "description": "Open a dispute on a posted transaction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unauthorized",
+              "duplicate_charge",
+              "wrong_amount",
+              "not_received",
+              "defective"
+            ]
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "freeze_card",
+      "description": "Temporarily lock a card to block new charges.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_type": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit",
+              "virtual"
+            ]
+          }
+        },
+        "required": []
+      },
+      "keywords": [
+        "lost my card",
+        "lost card",
+        "stolen card",
+        "card was stolen",
+        "misplaced my card",
+        "can't find my card",
+        "lock my card",
+        "block my card",
+        "someone stole my card"
+      ]
+    },
+    {
+      "name": "order_card",
+      "description": "Order a new or replacement payment card.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "card_type": {
+            "type": "string",
+            "enum": [
+              "debit",
+              "credit",
+              "virtual"
+            ]
+          }
+        },
+        "required": [
+          "card_type"
+        ]
+      }
+    },
+    {
+      "name": "set_spending_limit",
+      "description": "Set a spending limit on a card over a time window.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly",
+              "monthly"
+            ]
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "create_budget",
+      "description": "Create a budget for a spending category.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "groceries",
+              "dining",
+              "travel",
+              "utilities",
+              "shopping",
+              "entertainment"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "category",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "get_budget_status",
+      "description": "Check how much of a budget has been spent this period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_statement",
+      "description": "Download an account statement for a period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "30d",
+              "90d",
+              "ytd",
+              "1y"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "csv"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_credit_score",
+      "description": "Retrieve the customer's current credit score and factors.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "apply_for_loan",
+      "description": "Start an application for a loan or line of credit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "loan_type": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "auto",
+              "mortgage",
+              "student",
+              "business"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "loan_type"
+        ]
+      }
+    },
+    {
+      "name": "convert_currency",
+      "description": "Convert an amount from one currency to another at the current rate.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "from_currency": {
+            "type": "string"
+          },
+          "to_currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "to_currency"
+        ]
+      }
+    },
+    {
+      "name": "get_investment_portfolio",
+      "description": "View holdings, allocation, and performance of the investment account.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_stock_quote",
+      "description": "Get the latest price and movement for a ticker symbol.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "set_market_alert",
+      "description": "Notify the customer when a stock crosses a target price.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms",
+              "push"
+            ]
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      }
+    },
+    {
+      "name": "get_tax_documents",
+      "description": "Retrieve tax forms and documents for a given year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "string"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "send_invoice",
+      "description": "Create and send an invoice to a client.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "client": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "client",
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "get_invoice_status",
+      "description": "Check whether an invoice has been paid.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "invoice_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "paid",
+              "overdue",
+              "void"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "record_expense",
+      "description": "Record a business expense for accounting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "travel",
+              "meals",
+              "office",
+              "software",
+              "marketing",
+              "payroll"
+            ]
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "reconcile_account",
+      "description": "Reconcile an account's transactions against a statement.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "checking",
+              "savings",
+              "credit"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_cash_flow",
+      "description": "Summarize money in versus money out over a period.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "30d",
+              "90d",
+              "ytd",
+              "1y"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "enable_overdraft_protection",
+      "description": "Turn on overdraft protection for an account.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "checking",
+              "savings"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "update_payee",
+      "description": "Add or edit a saved bill payee.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "payee": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "payee"
+        ]
+      }
+    },
+    {
+      "name": "request_payment_refund",
+      "description": "Request a refund for a payment that was sent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ]
+      }
+    },
+    {
+      "name": "get_rewards_balance",
+      "description": "Check accumulated card rewards.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "enum": [
+              "cashback",
+              "points",
+              "miles"
+            ]
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "estimate_loan_payment",
+      "description": "Estimate the monthly payment for a loan amount and term.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "loan_type": {
+            "type": "string",
+            "enum": [
+              "personal",
+              "auto",
+              "mortgage",
+              "student",
+              "business"
+            ]
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      }
+    },
+    {
+      "name": "close_account",
+      "description": "Close one of the customer's accounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "checking",
+              "savings",
+              "credit",
+              "investment"
+            ]
+          }
+        },
+        "required": [
+          "account_type"
+        ]
+      }
+    }
+  ]
+}
