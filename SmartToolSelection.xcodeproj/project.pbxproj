@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F8874DE22FE8EC3C00454172 /* MLXEmbedders in Frameworks */ = {isa = PBXBuildFile; productRef = F8874DE12FE8EC3C00454172 /* MLXEmbedders */; };
-		F8874DE42FE8EC3C00454172 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = F8874DE32FE8EC3C00454172 /* MLXLMCommon */; };
 		F8874E452FE9AC8B00454172 /* MLXEmbedders in Frameworks */ = {isa = PBXBuildFile; productRef = F8874E442FE9AC8B00454172 /* MLXEmbedders */; };
 		F8874E472FE9AC8B00454172 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = F8874E462FE9AC8B00454172 /* MLXLMCommon */; };
 		FA0000000000000000000A03 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = FA0000000000000000000A02 /* Transformers */; };
@@ -62,8 +60,6 @@
 			files = (
 				F8874E472FE9AC8B00454172 /* MLXLMCommon in Frameworks */,
 				F8874E452FE9AC8B00454172 /* MLXEmbedders in Frameworks */,
-				F8874DE42FE8EC3C00454172 /* MLXLMCommon in Frameworks */,
-				F8874DE22FE8EC3C00454172 /* MLXEmbedders in Frameworks */,
 				FA0000000000000000000A03 /* Transformers in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -125,8 +121,6 @@
 			);
 			name = SmartToolSelection;
 			packageProductDependencies = (
-				F8874DE12FE8EC3C00454172 /* MLXEmbedders */,
-				F8874DE32FE8EC3C00454172 /* MLXLMCommon */,
 				FA0000000000000000000A02 /* Transformers */,
 				F8874E442FE9AC8B00454172 /* MLXEmbedders */,
 				F8874E462FE9AC8B00454172 /* MLXLMCommon */,
@@ -658,14 +652,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		F8874DE12FE8EC3C00454172 /* MLXEmbedders */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MLXEmbedders;
-		};
-		F8874DE32FE8EC3C00454172 /* MLXLMCommon */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MLXLMCommon;
-		};
 		F8874E442FE9AC8B00454172 /* MLXEmbedders */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = F8874E432FE9AC8B00454172 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
