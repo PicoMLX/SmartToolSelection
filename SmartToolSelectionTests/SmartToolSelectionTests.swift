@@ -8,6 +8,13 @@ import Testing
 
 @testable import SmartToolSelection
 
+// MLX-swift shares one global Metal stream + allocator, so it is not safe to evaluate
+// from multiple threads at once. Swift Testing runs a suite's tests in parallel by
+// default, which let the GPU-backed tests below overlap during encode or — more often —
+// when one test's model deallocated while another was still evaluating, an intermittent
+// EXC_BAD_ACCESS *after* the assertions had already passed. `.serialized` runs them one
+// at a time so model load / encode / teardown never overlap.
+@Suite(.serialized)
 struct SmartToolSelectionTests {
 
     static let docs = [

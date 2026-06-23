@@ -1,5 +1,5 @@
 {
-  "originHash" : "f74af5a6d6a0127f301b06e6fe3148263db2e8bcfc6317fab15da6d7b310e3e1",
+  "originHash" : "e6e0eebb261388f4f31e71c81a3ae49a487a6cf11365e4aa1e706712c73c5333",
   "pins" : [
     {
       "identity" : "jinja",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/picomlx/mlx-swift-lm",
       "state" : {
         "branch" : "lfm2.5-bidirectional-embedders",
-        "revision" : "d43c2aad48e169ea0c7ca863e10f762ac34cb42f"
+        "revision" : "389997b5d758adb69ea60df3d2a0abe6b4cae159"
       }
     },
     {
