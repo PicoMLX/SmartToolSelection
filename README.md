@@ -14,6 +14,8 @@ A native, on-device Swift port of LiquidAI's [ColBERT Tool Selection Space](http
 
 The app indexes 151 tool definitions spanning 7 domains (e-commerce, devops, travel, support, and more). For each request it scores every tool and shows the top 5 — the candidate set you would route to an LLM instead of all 151 schemas.
 
+Enable **PicoDecisions routing** to pass those five candidates to the multilingual Laya decision model. It recommends one tool or **No matching tool**, then a configurable acceptance policy accepts the recommendation or abstains. The panel shows decision probabilities, latency, and prompt-truncation details alongside the existing retrieval results. This is a routing test harness: it does not collect arguments, authorize actions, or execute tools.
+
 Two retrievers, switchable in the UI:
 
 - **Embedding** — `LFM2.5-Embedding-350M`: one CLS-pooled vector per tool, ranked by cosine similarity.
@@ -27,6 +29,8 @@ Everything runs in-process on the device:
 2. **Encode** the query and each tool's routing text with LFM2.5 — the encoder forward runs on the **Apple Silicon GPU through [MLX-Swift](https://github.com/ml-explore/mlx-swift)**, using [mlx-swift-lm](https://github.com/PicoMLX/mlx-swift-lm)'s `MLXEmbedders` (which gained native LFM2.5 bidirectional-encoder support for this app).
 3. **Score** on the CPU with **[Accelerate](https://developer.apple.com/documentation/accelerate)** — a single BLAS call per query over flat, L2-normalized vectors: `cblas_sgemv` for embedding cosine, `cblas_sgemm` + `vDSP_maxv` for ColBERT MaxSim.
 4. **Rank** and show the top 5.
+5. **Decide**, when PicoDecisions routing is enabled: [PicoDecisions](https://github.com/PicoMLX/PicoDecisions) runs Laya in FP16 or FP32 over the retrieved tool descriptions plus an explicit no-match option.
+6. **Apply the acceptance policy** and display the raw recommendation, policy result, and prompt diagnostics. Retrieval scores and decision probabilities remain separate.
 
 The tool index is built once when a model loads; each keystroke only re-encodes the query, so a search takes tens of milliseconds (the per-query latency is shown in the UI).
 
@@ -49,8 +53,8 @@ Retention is NDCG@10 against the bf16 baseline, measured over **NanoBEIR** (Engl
 
 ## Requirements
 
-- Apple Silicon Mac (macOS 14+) or an iOS 17+ device
-- Xcode 16+
+- Apple Silicon Mac running macOS 26.4+, or a physical iOS 26.4+ device
+- Xcode 26.6+ with Swift 6.3+; development builds also use Xcode 27
 
 ## Build & run
 
@@ -60,8 +64,46 @@ Retention is NDCG@10 against the bf16 baseline, measured over **NanoBEIR** (Engl
 
 Pick a backend (Embedding / ColBERT) and precision (bf16 / int8 / int4) at the top of the window; switching either downloads the matching model as needed and rebuilds the index.
 
+The PicoDecisions dependency pins commit `7b94c97695c4592d5067d50a8bd8982a6a26536e`, which includes prompt-truncation diagnostics from [PicoDecisions PR #6](https://github.com/PicoMLX/PicoDecisions/pull/6). That PR is the integration's pending upstream dependency; the commit pin also resolves before it merges.
+
+## Enable PicoDecisions routing
+
+Turn on **PicoDecisions routing** below the search field. The first use downloads approximately 648 MB from [convaiinnovations/laya-multilingual](https://huggingface.co/convaiinnovations/laya-multilingual) at the validated revision `052592a15d198d9ad47da779604259b10b47b7aa`. Later uses load the cached checkpoint. FP16 and FP32 use the same downloaded files, with the selected precision applied when loading.
+
+The cache is inside the app's Application Support directory under:
+
+```text
+SmartToolSelection/models/convaiinnovations/laya-multilingual/
+  052592a15d198d9ad47da779604259b10b47b7aa/
+    model.safetensors
+    encoder/config.json
+    rl_agent_config.json
+    tokenizer/tokenizer.json
+    tokenizer/tokenizer_config.json
+```
+
+The console prints the full device-specific path. Keep the nested directories intact if you inspect or copy the checkpoint.
+
+Both **Acceptance thresholds** start at zero, disabling their gates. Increase **Minimum probability** or **Minimum margin** to experiment with abstention; the margin compares the selected option with its strongest rival, including no match. Changing a threshold reevaluates the current recommendation without another inference call. These thresholds and model probabilities are uncalibrated, so acceptance does not establish that a tool is appropriate or authorized.
+
+Expand **Decision probabilities** to compare the five candidates and no match. Expand **Prompt token details** to inspect retained/original token counts for the request, routing instructions, and each candidate description. A shortened-description warning means decision criteria may have been omitted. Overlong request state is rejected rather than silently shortened; the retrieved cards remain available if decision inference fails.
+
+## Test on a physical device
+
+This integration provides the device test harness. Physical-device correctness, memory, and performance results still need to be collected.
+
+1. Open `SmartToolSelection.xcodeproj` in Xcode and select the **SmartToolSelection** scheme.
+2. Select your connected iPhone or iPad as the run destination and configure the app target's signing team, then run it.
+3. Allow the selected retriever to download and index the catalog. Enable **PicoDecisions routing** and wait for the decision model to report ready.
+4. Try an ordinary request such as `show me cheap blue outdoor chairs`, a negated request such as `Do not cancel my order`, and an unrelated request such as `Tell me a bedtime story`. Compare the retrieved candidates with the raw recommendation and no-match probability; these inputs probe behavior rather than guarantee particular outputs.
+5. Expand **Prompt token details** and inspect candidates with long descriptions. Try a long request to check the capacity-error path. Record input-token counts, any omitted tokens, model-load time, decision latency, and the separately reported retrieval latency. Model-load time excludes the download, and decision latency excludes waiting for other queued GPU work.
+6. Switch **Decision precision** between FP16 and FP32 and repeat the same requests. Use Xcode's memory gauge while loading and routing to compare memory use. Edit or clear a request during inference, and switch retrieval backends, to check that older recommendations do not reappear.
+
+The routing unit tests use a fake decision engine and do not require Hugging Face downloads. To keep the test host offline, set `SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` in the scheme's Test environment, or pass `TEST_RUNNER_SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` to `xcodebuild test`. Existing retrieval tests use cached model files and skip when those files are absent. Run the **SmartToolSelectionTests** target through Xcode; actual Metal inference requires an Apple Silicon Mac or physical device.
+
 ## Credits
 
 - **Models** — [LiquidAI](https://huggingface.co/LiquidAI) LFM2.5-Embedding-350M and LFM2.5-ColBERT-350M, converted to MLX ([model repositories](https://huggingface.co/mlx-community)).
 - **Original demo** — LiquidAI's [ColBERT Tool Selection Space](https://huggingface.co/spaces/LiquidAI/colbert-tool-selection).
 - **On-device inference** — [MLX-Swift](https://github.com/ml-explore/mlx-swift) and [mlx-swift-lm](https://github.com/PicoMLX/mlx-swift-lm).
+- **Decision routing** — [PicoDecisions](https://github.com/PicoMLX/PicoDecisions), using Convai Innovations' [multilingual Laya checkpoint](https://huggingface.co/convaiinnovations/laya-multilingual).

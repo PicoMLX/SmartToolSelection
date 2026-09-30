@@ -64,6 +64,25 @@ enum ModelDownloader {
     ]
     private static let weightsFile = "model.safetensors"
 
+    static let layaRepository = "convaiinnovations/laya-multilingual"
+    static let layaRevision = "052592a15d198d9ad47da779604259b10b47b7aa"
+
+    /// Keep the validated checkpoint's nested layout and immutable revision.
+    static func downloadLaya(progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
+        let directory = try cacheDirectory(for: layaRepository + "/" + layaRevision)
+        for file in ["encoder/config.json", "rl_agent_config.json",
+                     "tokenizer/tokenizer.json", "tokenizer/tokenizer_config.json"] {
+            try Task.checkCancellation()
+            try await fetch(repoId: layaRepository, file: file, into: directory,
+                            delegate: nil, revision: layaRevision)
+        }
+        try Task.checkCancellation()
+        try await fetch(repoId: layaRepository, file: weightsFile, into: directory,
+                        delegate: DownloadProgress(progress), revision: layaRevision)
+        print("Laya checkpoint: \(directory.path) (\(layaRevision))")
+        return directory
+    }
+
     static func download(
         repoId: String, progress: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
@@ -104,17 +123,20 @@ enum ModelDownloader {
     /// already cached on disk.
     @discardableResult
     private static func fetch(
-        repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?
+        repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?,
+        revision: String = "main"
     ) async throws -> Bool {
         let destination = directory.appending(component: file)
         if FileManager.default.fileExists(atPath: destination.path) { return false }
-        guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/main/\(file)") else {
+        guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/\(revision)/\(file)") else {
             throw URLError(.badURL)
         }
         let (temp, response) = try await URLSession.shared.download(from: url, delegate: delegate)
         if let http = response as? HTTPURLResponse, !(200 ..< 300).contains(http.statusCode) {
             throw URLError(.badServerResponse)
         }
+        try Task.checkCancellation()
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.moveItem(at: temp, to: destination)
         return true
@@ -343,7 +365,7 @@ actor RetrievalEngine {
 /// Vectors are L2-normalized, so each entry is a cosine. This replaces an
 /// O(Lq·Ld) Swift double loop of individual dot products with a single GEMM + a
 /// handful of vDSP reductions.
-private func maxSim(query: [Float], queryRows: Int, doc: [Float], docRows: Int, dim: Int) -> Float {
+private nonisolated func maxSim(query: [Float], queryRows: Int, doc: [Float], docRows: Int, dim: Int) -> Float {
     guard queryRows > 0, docRows > 0, dim > 0 else { return 0 }
     var sim = [Float](repeating: 0, count: queryRows * docRows)
     query.withUnsafeBufferPointer { q in
@@ -391,7 +413,18 @@ final class AppModel {
     var backend: Backend = .colbert  // default to ColBERT, matching the web app's mode
     var quant: Quant = .bf16
 
-    private var engine = RetrievalEngine()
+    let decisionRouting: DecisionRoutingModel
+    private let inferenceQueue: DeviceInferenceQueue
+    private let engine = RetrievalEngine()
+    private var searchGeneration = UUID()
+    private var retrievalGeneration = UUID()
+    private var decisionConfigurationTask: Task<Void, Never>?
+
+    init() {
+        let queue = DeviceInferenceQueue()
+        self.inferenceQueue = queue
+        self.decisionRouting = DecisionRoutingModel(queue: queue)
+    }
     private var loadedKey: String?
     private var loadTask: Task<Void, Never>?
     private var lastDownloadPercent = -1
@@ -412,7 +445,8 @@ final class AppModel {
         self.backend = backend
         self.quant = quant
         loadedKey = nil
-        results = []
+        retrievalGeneration = UUID()
+        prepareSearch(lastQuery)
         enqueueLoad()
     }
 
@@ -425,9 +459,12 @@ final class AppModel {
     }
 
     private func performLoad() async {
-        let key = "\(backend.rawValue)-\(quant.suffix)"
+        let requestedBackend = backend
+        let requestedQuant = quant
+        let generation = retrievalGeneration
+        let key = "\(requestedBackend.rawValue)-\(requestedQuant.suffix)"
         if loadedKey == key, case .ready = status { return }
-        let repo = modelRepoId(backend: backend, quant: quant)
+        let repo = modelRepoId(backend: requestedBackend, quant: requestedQuant)
         lastDownloadPercent = -1
         status = .loading("Downloading \(backend.modelName) (\(quant.title))…")
         do {
@@ -436,14 +473,20 @@ final class AppModel {
                 guard let self else { return }
                 Task { @MainActor in self.reportDownload(fraction) }
             }
-            status = .loading("Loading \(backend.modelName)…")
-            try await engine.load(directory: directory)
-            status = .loading("Indexing \(tools.count) tools…")
-            await engine.buildIndex(routingTexts: tools.map(\.routingText))
+            guard generation == retrievalGeneration else { return }
+            status = .loading("Loading and indexing \(requestedBackend.modelName)…")
+            let engine = self.engine
+            let texts = tools.map(\.routingText)
+            try await inferenceQueue.run {
+                try await engine.load(directory: directory)
+                await engine.buildIndex(routingTexts: texts)
+            }
+            guard generation == retrievalGeneration else { return }
             loadedKey = key
             status = .ready
             if !lastQuery.isEmpty { await search(lastQuery) }
         } catch {
+            guard generation == retrievalGeneration else { return }
             status = .failed("\(error.localizedDescription)\n\(repo)")
         }
     }
@@ -458,31 +501,64 @@ final class AppModel {
         }
     }
 
-    func clearResults() {
+    /// Invalidate immediately, before the UI debounce begins.
+    func prepareSearch(_ query: String) {
+        searchGeneration = UUID()
+        lastQuery = query
         results = []
-        lastQuery = ""
+        lastLatencyMs = 0
+        decisionRouting.invalidateSearch()
+    }
+
+    func cancelSearch() {
+        searchGeneration = UUID()
+        decisionRouting.invalidateSearch()
+    }
+
+    func clearResults() { prepareSearch("") }
+
+    func configureDecisionRouting() {
+        decisionConfigurationTask?.cancel()
+        cancelSearch()
+        decisionRouting.invalidateConfiguration()
+        decisionConfigurationTask = Task { [weak self] in
+            guard let self else { return }
+            await decisionRouting.loadIfNeeded()
+            guard !Task.isCancelled else { return }
+            if !lastQuery.isEmpty { await search(lastQuery) }
+        }
     }
 
     func search(_ query: String, k: Int = 5) async {
-        lastQuery = query
+        prepareSearch(query)
+        let generation = searchGeneration
+        let retrieval = retrievalGeneration
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            results = []
-            return
+        guard !trimmed.isEmpty, case .ready = status else { return }
+        let engine = self.engine
+        do {
+            let (scores, milliseconds) = try await inferenceQueue.run {
+                let started = ContinuousClock.now
+                let scores = await engine.scores(for: trimmed)
+                let duration = started.duration(to: ContinuousClock.now).components
+                let milliseconds = Double(duration.seconds) * 1_000 + Double(duration.attoseconds) / 1e15
+                return (scores, milliseconds)
+            }
+            guard !Task.isCancelled, generation == searchGeneration,
+                  retrieval == retrievalGeneration, case .ready = status,
+                  scores.count == tools.count else { return }
+            let ranked = zip(tools, scores)
+                .sorted { $0.1 > $1.1 }
+                .prefix(min(max(0, k), 5))
+                .enumerated()
+                .map { SearchResult(tool: $0.element.0, score: $0.element.1, rank: $0.offset + 1) }
+            results = Array(ranked)
+            lastLatencyMs = Int(milliseconds)
+            await decisionRouting.route(query: trimmed, candidates: results)
+        } catch is CancellationError {
+        } catch {
+            guard generation == searchGeneration else { return }
+            status = .failed(error.localizedDescription)
         }
-        guard case .ready = status else { return }
-        let started = Date()
-        let scores = await engine.scores(for: trimmed)
-        // Drop stale results: a newer search or a clear superseded this query.
-        guard !Task.isCancelled, query == lastQuery else { return }
-        guard scores.count == tools.count else { return }
-        let ranked =
-            zip(tools, scores)
-            .sorted { $0.1 > $1.1 }
-            .prefix(k)
-            .enumerated()
-            .map { SearchResult(tool: $0.element.0, score: $0.element.1, rank: $0.offset + 1) }
-        results = Array(ranked)
-        lastLatencyMs = Int(Date().timeIntervalSince(started) * 1000)
     }
 }

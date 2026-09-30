@@ -60,6 +60,9 @@ struct ContentView: View {
                 controls
                 searchBar
                 statusLine
+                DecisionRoutingPanel(
+                    model: model.decisionRouting,
+                    configurationChanged: { model.configureDecisionRouting() })
                 resultsList
                 exampleChips
                 emptyHint
@@ -78,7 +81,15 @@ struct ContentView: View {
         // website). Pin light appearance so `.primary` text (title, tool names, the
         // search field's text) stays dark on the hardcoded light surfaces in dark mode.
         .preferredColorScheme(.light)
-        .task { model.loadIfNeeded() }
+        .task {
+            if ProcessInfo.processInfo.environment["SMART_TOOL_SELECTION_SKIP_MODEL_LOAD"] != "1" {
+                model.loadIfNeeded()
+            }
+        }
+        .onDisappear {
+            searchTask?.cancel()
+            model.cancelSearch()
+        }
     }
 
     // MARK: Header
@@ -112,21 +123,32 @@ struct ContentView: View {
     // MARK: Backend / quant controls
 
     private var controls: some View {
-        HStack(spacing: 12) {
-            Picker("Backend", selection: $model.backend) {
-                ForEach(Backend.allCases) { Text($0.title).tag($0) }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                backendPicker.fixedSize()
+                retrievalPrecisionPicker.fixedSize()
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
-
-            Picker("Precision", selection: $model.quant) {
-                ForEach(Quant.allCases) { Text($0.title).tag($0) }
+            VStack(spacing: 12) {
+                backendPicker
+                retrievalPrecisionPicker
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
         }
         .onChange(of: model.backend) { _, b in reload(backend: b, quant: model.quant) }
         .onChange(of: model.quant) { _, q in reload(backend: model.backend, quant: q) }
+    }
+
+    private var backendPicker: some View {
+        Picker("Retrieval backend", selection: $model.backend) {
+            ForEach(Backend.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var retrievalPrecisionPicker: some View {
+        Picker("Retrieval precision", selection: $model.quant) {
+            ForEach(Quant.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
     }
 
     // MARK: Search
@@ -141,12 +163,14 @@ struct ContentView: View {
                 .onSubmit { runSearch() }
             if !query.isEmpty {
                 Button {
+                    searchTask?.cancel()
                     query = ""
                     model.clearResults()
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Brand.textLight)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear request")
             }
         }
         .padding(.horizontal, 16)
@@ -160,8 +184,11 @@ struct ContentView: View {
         FlowLayout(spacing: 8) {
             ForEach(examples, id: \.query) { ex in
                 Button {
-                    query = ex.query
-                    runSearch()
+                    if query == ex.query {
+                        runSearch()
+                    } else {
+                        query = ex.query
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         Circle().fill(Brand.color(for: ex.domain)).frame(width: 7, height: 7)
@@ -238,6 +265,11 @@ struct ContentView: View {
     private func debouncedSearch() {
         searchTask?.cancel()
         let q = query
+        model.prepareSearch(q)
+        guard !q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            model.clearResults()
+            return
+        }
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(250))
             if Task.isCancelled { return }
@@ -248,10 +280,12 @@ struct ContentView: View {
     private func runSearch() {
         searchTask?.cancel()
         let q = query
+        model.prepareSearch(q)
         searchTask = Task { await model.search(q) }
     }
 
     private func reload(backend: Backend, quant: Quant) {
+        searchTask?.cancel()
         model.reload(backend: backend, quant: quant)
     }
 }
@@ -291,14 +325,16 @@ private struct ResultCard: View {
                     .font(.system(.caption, design: .monospaced)).foregroundStyle(Brand.textLight)
                 Text(tool.name)
                     .font(.system(.body, design: .monospaced)).fontWeight(.semibold)
-                Spacer()
-                DomainBadge(domain: tool.domain)
-                Text("\(Int((result.score * 100).rounded()))%")
-                    .font(.system(.caption, design: .monospaced).bold())
-                    .foregroundStyle(Brand.purple)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right")
                     .font(.caption.bold()).foregroundStyle(Brand.textLight)
                     .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+            HStack(spacing: 10) {
+                DomainBadge(domain: tool.domain)
+                Text("Retrieval score \(result.score, format: .number.precision(.fractionLength(3)))")
+                    .font(.system(.caption, design: .monospaced).bold())
+                    .foregroundStyle(Brand.purple)
             }
             Text(tool.description)
                 .font(.callout).foregroundStyle(Brand.textMid)
