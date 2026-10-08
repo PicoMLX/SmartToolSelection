@@ -57,6 +57,7 @@ nonisolated struct SearchResult: Identifiable, Sendable, Equatable {
     let rank: Int
     var confidence: Double? = nil
     var inputDiagnostics: DecisionInputDiagnostics? = nil
+    var isChoiceProbability = false
     var id: String { tool.id }
 }
 
@@ -444,6 +445,7 @@ final class AppModel {
     var backend: Backend = .colbert
     var quant: Quant = .bf16
     var layaPrecision: DecisionPrecision = .float16
+    var layaScoring: LayaScoring = .multipleChoice
 
     private let inferenceQueue = DeviceInferenceQueue()
     private let engine: any ToolSearchEngine
@@ -584,6 +586,7 @@ final class AppModel {
         let engine = self.engine
         let queue = inferenceQueue
         let tools = self.tools
+        let layaScoring = self.layaScoring
         isSearching = true
         defer {
             if generation == searchGeneration {
@@ -594,7 +597,7 @@ final class AppModel {
         let prediction = Task {
             try await queue.run {
                 let started = ContinuousClock.now
-                let scores = try await engine.scores(for: trimmed, tools: tools)
+                let scores = try await engine.scores(for: trimmed, tools: tools, layaScoring: layaScoring)
                 try Task.checkCancellation()
                 let ranked = try rankedTools(tools, scores: scores, limit: k)
                 let truncated = scores.filter { $0.inputDiagnostics?.wasTruncated == true }.count

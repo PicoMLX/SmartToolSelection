@@ -1,0 +1,1428 @@
+{
+  "date": "2026-10-07",
+  "configuration": "Debug",
+  "precision": "FP16",
+  "gpuBatchSize": 16,
+  "catalogToolCount": 151,
+  "checkpoint": "convaiinnovations/laya-multilingual",
+  "checkpointRevision": "052592a15d198d9ad47da779604259b10b47b7aa",
+  "environment": "Apple M5 Max, macOS 27.0.1, Xcode 27",
+  "methodology": "Warm both methods for each request, then alternate their order across three timed rounds. Completed scoring and top-five ranking included; loading and catalog preparation excluded.",
+  "limitations": [
+    "Ten development smoke requests, not held-out examples. Expected tools are manually listed and not exhaustive relevance judgments.",
+    "Choice later rounds use domain/function identifiers rather than full descriptions.",
+    "Normal desktop activity continued. These Debug measurements do not establish Release or physical-device performance."
+  ],
+  "summary": {
+    "multipleChoice": {
+      "medianMilliseconds": 330.90525,
+      "samples": 30,
+      "expectedToolsInTopFive": 8,
+      "manuallyListedExpectedTools": 11,
+      "truncatedQuestions": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ]
+    },
+    "boolean": {
+      "medianMilliseconds": 849.1076665,
+      "samples": 30,
+      "expectedToolsInTopFive": 4,
+      "manuallyListedExpectedTools": 11,
+      "truncatedQuestions": 0,
+      "roundQuestionCounts": [
+        151
+      ]
+    }
+  },
+  "samples": [
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 320.488125,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|remove_from_cart",
+        "ecommerce|subscribe_price_alert",
+        "ecommerce|apply_coupon"
+      ],
+      "totalInputTokens": 4109,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 738.421625,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "ecommerce|get_recommendations",
+        "ecommerce|add_to_cart",
+        "devops|deploy_service",
+        "ecommerce|search_products",
+        "ecommerce|check_inventory"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 754.61625,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "ecommerce|get_recommendations",
+        "ecommerce|add_to_cart",
+        "devops|deploy_service",
+        "ecommerce|search_products",
+        "ecommerce|check_inventory"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 311.038292,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|remove_from_cart",
+        "ecommerce|subscribe_price_alert",
+        "ecommerce|apply_coupon"
+      ],
+      "totalInputTokens": 4109,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 304.097958,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|remove_from_cart",
+        "ecommerce|subscribe_price_alert",
+        "ecommerce|apply_coupon"
+      ],
+      "totalInputTokens": 4109,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|search_products"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 783.773375,
+      "query": "show me cheap blue outdoor chairs",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "ecommerce|get_recommendations",
+        "ecommerce|add_to_cart",
+        "devops|deploy_service",
+        "ecommerce|search_products",
+        "ecommerce|check_inventory"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 324.81125,
+      "query": "Find my order; do not cancel it",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|place_order",
+        "ecommerce|search_products",
+        "ecommerce|compare_products",
+        "ecommerce|check_inventory",
+        "finance|get_statement"
+      ],
+      "totalInputTokens": 4138,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 771.468584,
+      "query": "Find my order; do not cancel it",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|find_pharmacy",
+        "healthcare|check_prescription_status",
+        "healthcare|order_lab_test",
+        "workplace|report_security_incident",
+        "finance|get_tax_documents"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 741.426042,
+      "query": "Find my order; do not cancel it",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|find_pharmacy",
+        "healthcare|check_prescription_status",
+        "healthcare|order_lab_test",
+        "workplace|report_security_incident",
+        "finance|get_tax_documents"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 318.322084,
+      "query": "Find my order; do not cancel it",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|place_order",
+        "ecommerce|search_products",
+        "ecommerce|compare_products",
+        "ecommerce|check_inventory",
+        "finance|get_statement"
+      ],
+      "totalInputTokens": 4138,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 307.611,
+      "query": "Find my order; do not cancel it",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "ecommerce|place_order",
+        "ecommerce|search_products",
+        "ecommerce|compare_products",
+        "ecommerce|check_inventory",
+        "finance|get_statement"
+      ],
+      "totalInputTokens": 4138,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 830.124875,
+      "query": "Find my order; do not cancel it",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|find_pharmacy",
+        "healthcare|check_prescription_status",
+        "healthcare|order_lab_test",
+        "workplace|report_security_incident",
+        "finance|get_tax_documents"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 324.747958,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "finance|apply_for_loan",
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|add_to_cart"
+      ],
+      "totalInputTokens": 4226,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 859.110417,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|book_hotel",
+        "travel|get_trip_status"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 809.501375,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|book_hotel",
+        "travel|get_trip_status"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 337.198375,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "finance|apply_for_loan",
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|add_to_cart"
+      ],
+      "totalInputTokens": 4226,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 314.326791,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "finance|apply_for_loan",
+        "ecommerce|search_products",
+        "ecommerce|place_order",
+        "ecommerce|add_to_cart"
+      ],
+      "totalInputTokens": 4226,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights",
+        "travel|book_flight"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 854.395625,
+      "query": "Find a flight, book it, and add it to my calendar",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|book_hotel",
+        "travel|get_trip_status"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 328.511459,
+      "query": "spin up a new postgres database on aws",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|grant_access",
+        "devops|update_dns_record",
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|tear_down_resource"
+      ],
+      "totalInputTokens": 4152,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 772.665917,
+      "query": "spin up a new postgres database on aws",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "devops|run_pipeline",
+        "support|update_ticket",
+        "devops|deploy_service",
+        "devops|scale_service"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 808.334541,
+      "query": "spin up a new postgres database on aws",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "devops|run_pipeline",
+        "support|update_ticket",
+        "devops|deploy_service",
+        "devops|scale_service"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 349.906208,
+      "query": "spin up a new postgres database on aws",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|grant_access",
+        "devops|update_dns_record",
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|tear_down_resource"
+      ],
+      "totalInputTokens": 4152,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 316.212708,
+      "query": "spin up a new postgres database on aws",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|grant_access",
+        "devops|update_dns_record",
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|tear_down_resource"
+      ],
+      "totalInputTokens": 4152,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "devops|provision_resource"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 852.532208,
+      "query": "spin up a new postgres database on aws",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "devops|run_pipeline",
+        "support|update_ticket",
+        "devops|deploy_service",
+        "devops|scale_service"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 333.717334,
+      "query": "find me a business class flight to tokyo",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|search_flights",
+        "travel|cancel_flight",
+        "travel|book_flight",
+        "travel|book_airport_transfer",
+        "travel|get_visa_requirements"
+      ],
+      "totalInputTokens": 4142,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 856.131541,
+      "query": "find me a business class flight to tokyo",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|check_in"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 846.57575,
+      "query": "find me a business class flight to tokyo",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|check_in"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 356.213417,
+      "query": "find me a business class flight to tokyo",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|search_flights",
+        "travel|cancel_flight",
+        "travel|book_flight",
+        "travel|book_airport_transfer",
+        "travel|get_visa_requirements"
+      ],
+      "totalInputTokens": 4142,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 334.510542,
+      "query": "find me a business class flight to tokyo",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "travel|search_flights",
+        "travel|cancel_flight",
+        "travel|book_flight",
+        "travel|book_airport_transfer",
+        "travel|get_visa_requirements"
+      ],
+      "totalInputTokens": 4142,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "travel|search_flights"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 855.013083,
+      "query": "find me a business class flight to tokyo",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "travel|book_flight",
+        "travel|select_seat",
+        "travel|book_airport_transfer",
+        "travel|check_in"
+      ],
+      "totalInputTokens": 8287,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 345.685916,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|resolve_incident",
+        "workplace|onboard_employee",
+        "workplace|reserve_desk",
+        "workplace|approve_pto_request",
+        "workplace|get_payslip"
+      ],
+      "totalInputTokens": 4246,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 879.197583,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|update_dns_record",
+        "devops|set_alert",
+        "finance|convert_currency"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 807.77475,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|update_dns_record",
+        "devops|set_alert",
+        "finance|convert_currency"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 347.931375,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|resolve_incident",
+        "workplace|onboard_employee",
+        "workplace|reserve_desk",
+        "workplace|approve_pto_request",
+        "workplace|get_payslip"
+      ],
+      "totalInputTokens": 4246,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "multipleChoice",
+      "milliseconds": 321.987958,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "devops|resolve_incident",
+        "workplace|onboard_employee",
+        "workplace|reserve_desk",
+        "workplace|approve_pto_request",
+        "workplace|get_payslip"
+      ],
+      "totalInputTokens": 4246,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "finance|dispute_transaction"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 866.704084,
+      "query": "there's a charge I didn't make, dispute it",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|deploy_service",
+        "devops|provision_resource",
+        "devops|update_dns_record",
+        "devops|set_alert",
+        "finance|convert_currency"
+      ],
+      "totalInputTokens": 9042,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 337.507167,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|escalate_ticket",
+        "support|schedule_callback",
+        "support|update_ticket",
+        "support|tag_ticket",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 4121,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 882.072458,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|book_appointment",
+        "support|schedule_callback",
+        "workplace|book_meeting_room",
+        "healthcare|enroll_in_program",
+        "workplace|provision_laptop"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 892.706959,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|book_appointment",
+        "support|schedule_callback",
+        "workplace|book_meeting_room",
+        "healthcare|enroll_in_program",
+        "workplace|provision_laptop"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 342.523125,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|escalate_ticket",
+        "support|schedule_callback",
+        "support|update_ticket",
+        "support|tag_ticket",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 4121,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 326.497166,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|escalate_ticket",
+        "support|schedule_callback",
+        "support|update_ticket",
+        "support|tag_ticket",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 4121,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "healthcare|book_appointment"
+      ],
+      "expectedHits": 1,
+      "method": "boolean",
+      "milliseconds": 905.885083,
+      "query": "book a telehealth visit with a dermatologist",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|book_appointment",
+        "support|schedule_callback",
+        "workplace|book_meeting_room",
+        "healthcare|enroll_in_program",
+        "workplace|provision_laptop"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 351.775333,
+      "query": "bump this ticket up to a manager",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "support|escalate_ticket",
+        "support|tag_ticket",
+        "workplace|submit_pto_request",
+        "support|close_ticket"
+      ],
+      "totalInputTokens": 4134,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 884.423875,
+      "query": "bump this ticket up to a manager",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|provision_resource",
+        "finance|close_account",
+        "ecommerce|apply_coupon",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 851.169875,
+      "query": "bump this ticket up to a manager",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|provision_resource",
+        "finance|close_account",
+        "ecommerce|apply_coupon",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 363.214875,
+      "query": "bump this ticket up to a manager",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "support|escalate_ticket",
+        "support|tag_ticket",
+        "workplace|submit_pto_request",
+        "support|close_ticket"
+      ],
+      "totalInputTokens": 4134,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 361.63775,
+      "query": "bump this ticket up to a manager",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "support|escalate_ticket",
+        "support|tag_ticket",
+        "workplace|submit_pto_request",
+        "support|close_ticket"
+      ],
+      "totalInputTokens": 4134,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "support|escalate_ticket"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 924.4575,
+      "query": "bump this ticket up to a manager",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|provision_resource",
+        "finance|close_account",
+        "ecommerce|apply_coupon",
+        "healthcare|book_appointment"
+      ],
+      "totalInputTokens": 8136,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 350.043083,
+      "query": "request a week of vacation",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|page_oncall",
+        "support|close_ticket",
+        "workplace|set_out_of_office",
+        "workplace|submit_pto_request"
+      ],
+      "totalInputTokens": 4106,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 847.045458,
+      "query": "request a week of vacation",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "healthcare|cancel_appointment",
+        "workplace|grant_app_access",
+        "finance|close_account",
+        "workplace|onboard_employee"
+      ],
+      "totalInputTokens": 7834,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 845.028542,
+      "query": "request a week of vacation",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "healthcare|cancel_appointment",
+        "workplace|grant_app_access",
+        "finance|close_account",
+        "workplace|onboard_employee"
+      ],
+      "totalInputTokens": 7834,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 341.828333,
+      "query": "request a week of vacation",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|page_oncall",
+        "support|close_ticket",
+        "workplace|set_out_of_office",
+        "workplace|submit_pto_request"
+      ],
+      "totalInputTokens": 4106,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 325.204709,
+      "query": "request a week of vacation",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "support|update_ticket",
+        "devops|page_oncall",
+        "support|close_ticket",
+        "workplace|set_out_of_office",
+        "workplace|submit_pto_request"
+      ],
+      "totalInputTokens": 4106,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "workplace|submit_pto_request"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 838.356875,
+      "query": "request a week of vacation",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "devops|provision_resource",
+        "healthcare|cancel_appointment",
+        "workplace|grant_app_access",
+        "finance|close_account",
+        "workplace|onboard_employee"
+      ],
+      "totalInputTokens": 7834,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 331.983333,
+      "query": "where is my delivery right now",
+      "round": 0,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "workplace|set_out_of_office",
+        "workplace|report_security_incident",
+        "ecommerce|track_shipment",
+        "workplace|enroll_training",
+        "support|set_status"
+      ],
+      "totalInputTokens": 4107,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 900.788291,
+      "query": "where is my delivery right now",
+      "round": 0,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|check_prescription_status",
+        "devops|provision_resource",
+        "healthcare|order_lab_test",
+        "healthcare|book_appointment",
+        "ecommerce|place_order"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 876.422666,
+      "query": "where is my delivery right now",
+      "round": 1,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|check_prescription_status",
+        "devops|provision_resource",
+        "healthcare|order_lab_test",
+        "healthcare|book_appointment",
+        "ecommerce|place_order"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 329.827167,
+      "query": "where is my delivery right now",
+      "round": 1,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "workplace|set_out_of_office",
+        "workplace|report_security_incident",
+        "ecommerce|track_shipment",
+        "workplace|enroll_training",
+        "support|set_status"
+      ],
+      "totalInputTokens": 4107,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 1,
+      "method": "multipleChoice",
+      "milliseconds": 322.8285,
+      "query": "where is my delivery right now",
+      "round": 2,
+      "roundQuestionCounts": [
+        13,
+        4,
+        1
+      ],
+      "topFive": [
+        "workplace|set_out_of_office",
+        "workplace|report_security_incident",
+        "ecommerce|track_shipment",
+        "workplace|enroll_training",
+        "support|set_status"
+      ],
+      "totalInputTokens": 4107,
+      "truncated": 0
+    },
+    {
+      "expected": [
+        "ecommerce|track_shipment"
+      ],
+      "expectedHits": 0,
+      "method": "boolean",
+      "milliseconds": 843.503625,
+      "query": "where is my delivery right now",
+      "round": 2,
+      "roundQuestionCounts": [
+        151
+      ],
+      "topFive": [
+        "healthcare|check_prescription_status",
+        "devops|provision_resource",
+        "healthcare|order_lab_test",
+        "healthcare|book_appointment",
+        "ecommerce|place_order"
+      ],
+      "totalInputTokens": 7985,
+      "truncated": 0
+    }
+  ]
+}

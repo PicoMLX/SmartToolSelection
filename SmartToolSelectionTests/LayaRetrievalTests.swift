@@ -109,6 +109,21 @@ struct LayaRetrievalTests {
     }
 
     @MainActor
+    @Test("Laya scoring can switch between choice and boolean without reloading weights")
+    func scoringSwitch() async {
+        let engine = FakeSearchEngine()
+        let model = Self.app(engine: engine)
+        model.backend = .laya
+        await model.loadIfNeeded().value
+        await model.search("Find a flight")
+        model.layaScoring = .boolean
+        await model.search("Find a flight")
+        #expect(await engine.scoredMethods == [.multipleChoice, .boolean])
+        #expect(await engine.loadedBackends == [.laya])
+        #expect(model.results.count == 5)
+    }
+
+    @MainActor
     @Test("Clearing or editing the request cancels the full-catalog search without restoring stale results",
           arguments: ["clear", "edit"])
     func cancelObsoleteSearch(action: String) async throws {
@@ -231,6 +246,7 @@ private actor FakeSearchEngine: ToolSearchEngine {
     private var backend: Backend?
     private(set) var loadedBackends: [Backend] = []
     private(set) var scoredToolIDs: [[String]] = []
+    private(set) var scoredMethods: [LayaScoring] = []
     private(set) var firstSearchCancelled = false
 
     init(firstSearchGate: SearchGate? = nil, firstLoadGate: SearchGate? = nil, failsFirstSearch: Bool = false) {
@@ -247,9 +263,10 @@ private actor FakeSearchEngine: ToolSearchEngine {
         self.backend = backend
     }
     func unload() { backend = nil }
-    func scores(for query: String, tools: [Tool]) async throws -> [ToolSearchScore] {
+    func scores(for query: String, tools: [Tool], layaScoring: LayaScoring) async throws -> [ToolSearchScore] {
         let first = scoredToolIDs.isEmpty
         scoredToolIDs.append(tools.map(\.id))
+        scoredMethods.append(layaScoring)
         if first, let firstSearchGate {
             await firstSearchGate.wait()
             firstSearchCancelled = Task.isCancelled
@@ -304,7 +321,7 @@ struct LayaCatalogSmokeTests {
         try await engine.load(directory: directory, backend: .laya, precision: .float16, tools: tools)
         for query in ["show me cheap blue outdoor chairs", "Find my order; do not cancel it", "Find a flight, book it, and add it to my calendar"] {
             let started = ContinuousClock.now
-            let scores = try await engine.scores(for: query, tools: tools)
+            let scores = try await engine.scores(for: query, tools: tools, layaScoring: .boolean)
             let duration = started.duration(to: .now).components
             let milliseconds = Double(duration.seconds) * 1_000 + Double(duration.attoseconds) / 1e15
             #expect(scores.count == 151)

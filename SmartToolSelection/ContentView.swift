@@ -121,20 +121,32 @@ struct ContentView: View {
     // MARK: Backend / quant controls
 
     private var controls: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                backendPicker.fixedSize()
-                precisionPicker.fixedSize()
+        VStack(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    backendPicker.fixedSize()
+                    precisionPicker.fixedSize()
+                }
+                VStack(spacing: 12) {
+                    backendPicker
+                    precisionPicker
+                }
             }
-            VStack(spacing: 12) {
-                backendPicker
-                precisionPicker
+            if model.backend == .laya {
+                Picker("Laya scoring", selection: $model.layaScoring) {
+                    ForEach(LayaScoring.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 320)
             }
         }
         .onChange(of: model.backend) { _, b in reload(backend: b, quant: model.quant) }
         .onChange(of: model.quant) { _, q in reload(backend: model.backend, quant: q) }
         .onChange(of: model.layaPrecision) { _, _ in
             if model.backend == .laya { reload(backend: .laya, quant: model.quant) }
+        }
+        .onChange(of: model.layaScoring) { _, _ in
+            if model.backend == .laya { runSearch() }
         }
     }
 
@@ -361,8 +373,13 @@ private struct ResultCard: View {
             HStack(spacing: 10) {
                 DomainBadge(domain: tool.domain)
                 if backend == .laya {
-                    Text("Relevance \(result.score, format: .percent.precision(.fractionLength(1)))")
-                        .help("Laya's estimated probability that this tool is useful for the request. Used to rank candidates.")
+                    if result.isChoiceProbability {
+                        Text("Choice probability \(result.score, format: .percent.precision(.fractionLength(1)))")
+                            .help("Probability among the finalists and a no-match option. Earlier rounds narrow the catalog. This is not an independent probability that the tool is useful.")
+                    } else {
+                        Text("Relevance \(result.score, format: .percent.precision(.fractionLength(1)))")
+                            .help("Laya's estimated probability that this tool is useful for the request. Used to rank candidates.")
+                    }
                 } else {
                     Text("Retrieval score \(result.score, format: .number.precision(.fractionLength(3)))")
                 }
