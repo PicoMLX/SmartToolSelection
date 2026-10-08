@@ -17,6 +17,7 @@ import MLX
 import MLXEmbedders
 import MLXLMCommon
 import Observation
+import PicoDecisions
 import Tokenizers
 
 // MARK: - Public types
@@ -24,10 +25,21 @@ import Tokenizers
 enum Backend: String, CaseIterable, Identifiable, Sendable {
     case embedding
     case colbert
+    case laya
     var id: String { rawValue }
-    var title: String { self == .embedding ? "Embedding" : "ColBERT" }
+    var title: String {
+        switch self {
+        case .embedding: "Embedding"
+        case .colbert: "ColBERT"
+        case .laya: "Laya"
+        }
+    }
     var modelName: String {
-        self == .colbert ? "LFM2.5-ColBERT-350M" : "LFM2.5-Embedding-350M"
+        switch self {
+        case .embedding: "LFM2.5-Embedding-350M"
+        case .colbert: "LFM2.5-ColBERT-350M"
+        case .laya: "Laya multilingual"
+        }
     }
 }
 
@@ -39,17 +51,21 @@ enum Quant: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// One ranked tool returned to the UI.
-struct SearchResult: Identifiable, Sendable, Hashable {
+nonisolated struct SearchResult: Identifiable, Sendable, Equatable {
     let tool: Tool
-    let score: Float
+    let score: Double
     let rank: Int
+    var confidence: Double? = nil
+    var inputDiagnostics: DecisionInputDiagnostics? = nil
+    var isChoiceProbability = false
     var id: String { tool.id }
 }
 
 /// The six converted models are published on the Hugging Face Hub under
 /// `mlx-community`; they're downloaded and cached on first use.
 func modelRepoId(backend: Backend, quant: Quant) -> String {
-    "mlx-community/\(backend.modelName)-\(quant.suffix)"
+    precondition(backend != .laya, "Laya uses its own pinned checkpoint downloader.")
+    return "mlx-community/\(backend.modelName)-\(quant.suffix)"
 }
 
 // MARK: - Model download (Hugging Face Hub)
@@ -63,6 +79,25 @@ enum ModelDownloader {
         "tokenizer_config.json", "special_tokens_map.json",
     ]
     private static let weightsFile = "model.safetensors"
+
+    static let layaRepository = "convaiinnovations/laya-multilingual"
+    static let layaRevision = "052592a15d198d9ad47da779604259b10b47b7aa"
+
+    /// Keep the validated checkpoint's nested layout and immutable revision.
+    static func downloadLaya(progress: @escaping @Sendable (Double) -> Void) async throws -> URL {
+        let directory = try cacheDirectory(for: layaRepository + "/" + layaRevision)
+        for file in ["encoder/config.json", "rl_agent_config.json",
+                     "tokenizer/tokenizer.json", "tokenizer/tokenizer_config.json"] {
+            try Task.checkCancellation()
+            try await fetch(repoId: layaRepository, file: file, into: directory,
+                            delegate: nil, revision: layaRevision)
+        }
+        try Task.checkCancellation()
+        try await fetch(repoId: layaRepository, file: weightsFile, into: directory,
+                        delegate: DownloadProgress(progress), revision: layaRevision)
+        print("Laya checkpoint: \(directory.path) (\(layaRevision))")
+        return directory
+    }
 
     static func download(
         repoId: String, progress: @escaping @Sendable (Double) -> Void
@@ -104,17 +139,20 @@ enum ModelDownloader {
     /// already cached on disk.
     @discardableResult
     private static func fetch(
-        repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?
+        repoId: String, file: String, into directory: URL, delegate: URLSessionTaskDelegate?,
+        revision: String = "main"
     ) async throws -> Bool {
         let destination = directory.appending(component: file)
         if FileManager.default.fileExists(atPath: destination.path) { return false }
-        guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/main/\(file)") else {
+        guard let url = URL(string: "https://huggingface.co/\(repoId)/resolve/\(revision)/\(file)") else {
             throw URLError(.badURL)
         }
         let (temp, response) = try await URLSession.shared.download(from: url, delegate: delegate)
         if let http = response as? HTTPURLResponse, !(200 ..< 300).contains(http.statusCode) {
             throw URLError(.badServerResponse)
         }
+        try Task.checkCancellation()
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: destination)
         try FileManager.default.moveItem(at: temp, to: destination)
         return true
@@ -158,6 +196,18 @@ actor RetrievalEngine {
     private var padId: Int32 { Int32(tokenizer?.eosTokenId ?? 7) }
     private var head: LFM2BidirectionalConfiguration.MLXHead.Kind {
         config?.mlx.head ?? .embedding
+    }
+
+    func unload() {
+        model = nil
+        tokenizer = nil
+        config = nil
+        docEmbeddings = []
+        embeddingDim = 0
+        docMatrices = []
+        docRows = []
+        projDim = 0
+        skiplistIds = []
     }
 
     /// Load a converted model directory (config.json + model.safetensors + tokenizer.json).
@@ -343,7 +393,7 @@ actor RetrievalEngine {
 /// Vectors are L2-normalized, so each entry is a cosine. This replaces an
 /// O(Lq·Ld) Swift double loop of individual dot products with a single GEMM + a
 /// handful of vDSP reductions.
-private func maxSim(query: [Float], queryRows: Int, doc: [Float], docRows: Int, dim: Int) -> Float {
+private nonisolated func maxSim(query: [Float], queryRows: Int, doc: [Float], docRows: Int, dim: Int) -> Float {
     guard queryRows > 0, docRows > 0, dim > 0 else { return 0 }
     var sim = [Float](repeating: 0, count: queryRows * docRows)
     query.withUnsafeBufferPointer { q in
@@ -382,107 +432,199 @@ final class AppModel {
         case failed(String)
     }
 
-    let tools: [Tool] = ToolCatalog.load()
+    let tools: [Tool]
     private(set) var status: Status = .idle
     private(set) var results: [SearchResult] = []
-    private(set) var lastQuery: String = ""
-    private(set) var lastLatencyMs: Int = 0
+    private(set) var lastQuery = ""
+    private(set) var lastLatencyMs = 0
+    private(set) var loadLatencyMs: Int?
+    private(set) var isSearching = false
+    private(set) var searchError: String?
+    private(set) var truncatedToolCount = 0
 
-    var backend: Backend = .colbert  // default to ColBERT, matching the web app's mode
+    var backend: Backend = .colbert
     var quant: Quant = .bf16
+    var layaPrecision: DecisionPrecision = .float16
+    var layaScoring: LayaScoring = .multipleChoice
 
-    private var engine = RetrievalEngine()
+    private let inferenceQueue = DeviceInferenceQueue()
+    private let engine: any ToolSearchEngine
+    private let download: @Sendable (Backend, Quant, @escaping @Sendable (Double) -> Void) async throws -> URL
+    private var searchGeneration = UUID()
+    private var retrievalGeneration = UUID()
     private var loadedKey: String?
     private var loadTask: Task<Void, Never>?
+    private var predictionTask: Task<([SearchResult], Double, Int), Error>?
     private var lastDownloadPercent = -1
+
+    init(
+        tools: [Tool]? = nil,
+        engine: (any ToolSearchEngine)? = nil,
+        download: @escaping @Sendable (Backend, Quant, @escaping @Sendable (Double) -> Void) async throws -> URL = { backend, quant, progress in
+            if backend == .laya { return try await ModelDownloader.downloadLaya(progress: progress) }
+            return try await ModelDownloader.download(repoId: modelRepoId(backend: backend, quant: quant), progress: progress)
+        }
+    ) {
+        self.tools = tools ?? ToolCatalog.load()
+        self.engine = engine ?? CatalogSearchEngine()
+        self.download = download
+    }
 
     var domains: [String] {
         Array(Set(tools.map(\.domain))).filter { !$0.isEmpty }.sorted()
     }
 
-    /// Load the selected model + build the tool index. Loads are serialized through
-    /// `loadTask` so rapid backend/precision changes can't interleave or land out of
-    /// order; the per-key check keeps it idempotent.
-    func loadIfNeeded() {
-        enqueueLoad()
-    }
+    @discardableResult
+    func loadIfNeeded() -> Task<Void, Never> { enqueueLoad() }
 
-    /// Switch backend/quant and reload (serialized).
-    func reload(backend: Backend, quant: Quant) {
+    @discardableResult
+    func reload(backend: Backend, quant: Quant) -> Task<Void, Never> {
         self.backend = backend
         self.quant = quant
         loadedKey = nil
-        results = []
-        enqueueLoad()
+        loadLatencyMs = nil
+        retrievalGeneration = UUID()
+        prepareSearch(lastQuery)
+        status = .idle
+        return enqueueLoad()
     }
 
-    private func enqueueLoad() {
+    private func enqueueLoad() -> Task<Void, Never> {
         let previous = loadTask
+        previous?.cancel()
         loadTask = Task { [weak self] in
-            await previous?.value  // serialize: let any in-flight load finish first
+            await previous?.value
+            guard !Task.isCancelled else { return }
             await self?.performLoad()
         }
+        return loadTask!
     }
 
     private func performLoad() async {
-        let key = "\(backend.rawValue)-\(quant.suffix)"
+        let requestedBackend = backend
+        let requestedQuant = quant
+        let requestedPrecision = layaPrecision
+        let generation = retrievalGeneration
+        let precisionTitle = requestedBackend == .laya ? requestedPrecision.title : requestedQuant.title
+        let key = "\(requestedBackend.rawValue)-\(precisionTitle)"
         if loadedKey == key, case .ready = status { return }
-        let repo = modelRepoId(backend: backend, quant: quant)
         lastDownloadPercent = -1
-        status = .loading("Downloading \(backend.modelName) (\(quant.title))…")
+        status = .loading("Downloading \(requestedBackend.modelName) (\(precisionTitle))…")
         do {
-            // Download + cache the converted model files from the Hugging Face Hub.
-            let directory = try await ModelDownloader.download(repoId: repo) { [weak self] fraction in
-                guard let self else { return }
-                Task { @MainActor in self.reportDownload(fraction) }
+            let directory = try await download(requestedBackend, requestedQuant) { [weak self] fraction in
+                Task { @MainActor [weak self] in
+                    guard let self, generation == self.retrievalGeneration else { return }
+                    self.reportDownload(fraction)
+                }
             }
-            status = .loading("Loading \(backend.modelName)…")
-            try await engine.load(directory: directory)
-            status = .loading("Indexing \(tools.count) tools…")
-            await engine.buildIndex(routingTexts: tools.map(\.routingText))
+            try Task.checkCancellation()
+            guard generation == retrievalGeneration else { return }
+            status = .loading(requestedBackend == .laya
+                ? "Loading Laya (\(precisionTitle))…"
+                : "Loading and indexing \(requestedBackend.modelName)…")
+            let engine = self.engine
+            let tools = self.tools
+            let milliseconds = try await inferenceQueue.run {
+                let started = ContinuousClock.now
+                try await engine.load(directory: directory, backend: requestedBackend,
+                                      precision: requestedPrecision, tools: tools)
+                return Self.milliseconds(started.duration(to: .now))
+            }
+            try Task.checkCancellation()
+            guard generation == retrievalGeneration else { return }
+            loadLatencyMs = Int(milliseconds)
             loadedKey = key
             status = .ready
             if !lastQuery.isEmpty { await search(lastQuery) }
+        } catch is CancellationError {
+            if generation == retrievalGeneration { status = .idle }
         } catch {
-            status = .failed("\(error.localizedDescription)\n\(repo)")
+            guard generation == retrievalGeneration else { return }
+            status = .failed(error.localizedDescription)
         }
     }
 
-    /// Throttled download-progress -> status (only updates while still downloading).
     private func reportDownload(_ fraction: Double) {
-        let pct = max(0, min(100, Int(fraction * 100)))
-        guard pct != lastDownloadPercent else { return }
-        lastDownloadPercent = pct
+        guard fraction.isFinite else { return }
+        let percent = Int(max(0, min(1, fraction)) * 100)
+        guard percent != lastDownloadPercent else { return }
+        lastDownloadPercent = percent
         if case .loading(let message) = status, message.hasPrefix("Downloading") {
-            status = .loading("Downloading \(backend.modelName) (\(quant.title))… \(pct)%")
+            let precisionTitle = backend == .laya ? layaPrecision.title : quant.title
+            status = .loading("Downloading \(backend.modelName) (\(precisionTitle))… \(percent)%")
         }
     }
 
-    func clearResults() {
+    /// Cancel the full-catalog prediction immediately, before the UI debounce.
+    func prepareSearch(_ query: String) {
+        predictionTask?.cancel()
+        predictionTask = nil
+        searchGeneration = UUID()
+        lastQuery = query
         results = []
-        lastQuery = ""
+        lastLatencyMs = 0
+        isSearching = false
+        searchError = nil
+        truncatedToolCount = 0
     }
+
+    func cancelSearch() {
+        predictionTask?.cancel()
+        predictionTask = nil
+        searchGeneration = UUID()
+        isSearching = false
+    }
+
+    func clearResults() { prepareSearch("") }
 
     func search(_ query: String, k: Int = 5) async {
-        lastQuery = query
+        prepareSearch(query)
+        let generation = searchGeneration
+        let retrieval = retrievalGeneration
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            results = []
-            return
+        guard !trimmed.isEmpty, case .ready = status else { return }
+        let engine = self.engine
+        let queue = inferenceQueue
+        let tools = self.tools
+        let layaScoring = self.layaScoring
+        isSearching = true
+        defer {
+            if generation == searchGeneration {
+                isSearching = false
+                predictionTask = nil
+            }
         }
-        guard case .ready = status else { return }
-        let started = Date()
-        let scores = await engine.scores(for: trimmed)
-        // Drop stale results: a newer search or a clear superseded this query.
-        guard !Task.isCancelled, query == lastQuery else { return }
-        guard scores.count == tools.count else { return }
-        let ranked =
-            zip(tools, scores)
-            .sorted { $0.1 > $1.1 }
-            .prefix(k)
-            .enumerated()
-            .map { SearchResult(tool: $0.element.0, score: $0.element.1, rank: $0.offset + 1) }
-        results = Array(ranked)
-        lastLatencyMs = Int(Date().timeIntervalSince(started) * 1000)
+        let prediction = Task {
+            try await queue.run {
+                let started = ContinuousClock.now
+                let scores = try await engine.scores(for: trimmed, tools: tools, layaScoring: layaScoring)
+                try Task.checkCancellation()
+                let ranked = try rankedTools(tools, scores: scores, limit: k)
+                let truncated = scores.filter { $0.inputDiagnostics?.wasTruncated == true }.count
+                return (ranked, Self.milliseconds(started.duration(to: .now)), truncated)
+            }
+        }
+        predictionTask = prediction
+        do {
+            let (ranked, milliseconds, truncated) = try await withTaskCancellationHandler {
+                try await prediction.value
+            } onCancel: {
+                prediction.cancel()
+            }
+            try Task.checkCancellation()
+            guard generation == searchGeneration, retrieval == retrievalGeneration,
+                  case .ready = status else { return }
+            results = ranked
+            lastLatencyMs = Int(milliseconds)
+            truncatedToolCount = truncated
+        } catch is CancellationError {
+        } catch {
+            guard generation == searchGeneration, retrieval == retrievalGeneration else { return }
+            searchError = error.localizedDescription
+        }
+    }
+
+    nonisolated private static func milliseconds(_ duration: Duration) -> Double {
+        Double(duration.components.seconds) * 1_000 + Double(duration.components.attoseconds) / 1e15
     }
 }

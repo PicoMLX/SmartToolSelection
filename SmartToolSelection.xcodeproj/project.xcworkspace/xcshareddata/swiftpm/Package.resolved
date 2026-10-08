@@ -1,13 +1,13 @@
 {
-  "originHash" : "e6e0eebb261388f4f31e71c81a3ae49a487a6cf11365e4aa1e706712c73c5333",
+  "originHash" : "7c07d7374fbc65b1b59df26726194d0b2fa08fde2b58b9379680ef214821f477",
   "pins" : [
     {
-      "identity" : "jinja",
+      "identity" : "eventsource",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/johnmai-dev/Jinja",
+      "location" : "https://github.com/mattt/EventSource.git",
       "state" : {
-        "revision" : "5c0a87846dfd36ca6621795ad2f09fdaab82b739",
-        "version" : "1.3.0"
+        "revision" : "86b5096ac59ab46e66bd1f6377c604bc1dab0bc2",
+        "version" : "1.5.1"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ml-explore/mlx-swift",
       "state" : {
-        "revision" : "dc43e62d7055353c7f99fa071a4e71d29dfddc44",
-        "version" : "0.31.4"
+        "revision" : "0bb916c67f4b9e5c682cbe02a42c701c93ab5021",
+        "version" : "0.31.6"
       }
     },
     {
@@ -25,16 +25,33 @@
       "location" : "https://github.com/picomlx/mlx-swift-lm",
       "state" : {
         "branch" : "lfm2.5-bidirectional-embedders",
-        "revision" : "389997b5d758adb69ea60df3d2a0abe6b4cae159"
+        "revision" : "860403763f3496de3e3c6cc219495ae5cd304d31"
+      }
+    },
+    {
+      "identity" : "picodecisions",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PicoMLX/PicoDecisions",
+      "state" : {
+        "revision" : "7b94c97695c4592d5067d50a8bd8982a6a26536e"
       }
     },
     {
       "identity" : "swift-argument-parser",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-argument-parser.git",
+      "location" : "https://github.com/apple/swift-argument-parser",
       "state" : {
-        "revision" : "0fbc8848e389af3bb55c182bc19ca9d5dc2f255b",
-        "version" : "1.4.0"
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
+      }
+    },
+    {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "3b6410f7dee09eb33cdd26260c5fd47fda19b0e2",
+        "version" : "1.7.3"
       }
     },
     {
@@ -44,6 +61,33 @@
       "state" : {
         "revision" : "a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
         "version" : "1.6.0"
+      }
+    },
+    {
+      "identity" : "swift-crypto",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-crypto.git",
+      "state" : {
+        "revision" : "da9d28d69ebe3894b18376c8f2395c2f37b8448f",
+        "version" : "4.5.2"
+      }
+    },
+    {
+      "identity" : "swift-huggingface",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/huggingface/swift-huggingface.git",
+      "state" : {
+        "revision" : "f2f99991f2d7d8fdb3187e4fd539cd2facf5c13d",
+        "version" : "0.11.0"
+      }
+    },
+    {
+      "identity" : "swift-jinja",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/huggingface/swift-jinja.git",
+      "state" : {
+        "revision" : "4588064a20f3fc093c95f2f7d3359999bf30cae5",
+        "version" : "2.5.1"
       }
     },
     {
@@ -69,8 +113,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-transformers",
       "state" : {
-        "revision" : "f000aa7aec0e78acd0211685e4094e1fca84cd8b",
-        "version" : "0.1.24"
+        "revision" : "c21fdcde390313a6d98d8e33a346f2c3486c3ab0",
+        "version" : "1.3.4"
+      }
+    },
+    {
+      "identity" : "yyjson",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ibireme/yyjson.git",
+      "state" : {
+        "revision" : "8b4a38dc994a110abaec8a400615567bd996105f",
+        "version" : "0.12.0"
       }
     }
   ],

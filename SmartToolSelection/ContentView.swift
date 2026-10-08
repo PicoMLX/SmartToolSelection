@@ -3,6 +3,7 @@
 //  on-device via MLX (mlx-swift-lm) instead of a FastAPI server.
 
 import SwiftUI
+import PicoDecisions
 
 // MARK: - Brand palette (from the original site)
 
@@ -78,7 +79,15 @@ struct ContentView: View {
         // website). Pin light appearance so `.primary` text (title, tool names, the
         // search field's text) stays dark on the hardcoded light surfaces in dark mode.
         .preferredColorScheme(.light)
-        .task { model.loadIfNeeded() }
+        .task {
+            if ProcessInfo.processInfo.environment["SMART_TOOL_SELECTION_SKIP_MODEL_LOAD"] != "1" {
+                model.loadIfNeeded()
+            }
+        }
+        .onDisappear {
+            searchTask?.cancel()
+            model.cancelSearch()
+        }
     }
 
     // MARK: Header
@@ -100,7 +109,7 @@ struct ContentView: View {
                 + Text("\(model.tools.count) tools").foregroundStyle(Brand.purple).bold()
                 + Text(" can't fit them all in one prompt. Send a request and the model pre-selects the ")
                 + Text("5 most relevant").foregroundStyle(Brand.purple).bold()
-                + Text(" ones to reduce context rot."))
+                + Text(" ones to pass to the LLM."))
                 .font(.callout)
                 .foregroundStyle(Brand.textMid)
                 .multilineTextAlignment(.center)
@@ -112,21 +121,58 @@ struct ContentView: View {
     // MARK: Backend / quant controls
 
     private var controls: some View {
-        HStack(spacing: 12) {
-            Picker("Backend", selection: $model.backend) {
-                ForEach(Backend.allCases) { Text($0.title).tag($0) }
+        VStack(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    backendPicker.fixedSize()
+                    precisionPicker.fixedSize()
+                }
+                VStack(spacing: 12) {
+                    backendPicker
+                    precisionPicker
+                }
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
-
-            Picker("Precision", selection: $model.quant) {
-                ForEach(Quant.allCases) { Text($0.title).tag($0) }
+            if model.backend == .laya {
+                Picker("Laya scoring", selection: $model.layaScoring) {
+                    ForEach(LayaScoring.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 320)
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
         }
         .onChange(of: model.backend) { _, b in reload(backend: b, quant: model.quant) }
         .onChange(of: model.quant) { _, q in reload(backend: model.backend, quant: q) }
+        .onChange(of: model.layaPrecision) { _, _ in
+            if model.backend == .laya { reload(backend: .laya, quant: model.quant) }
+        }
+        .onChange(of: model.layaScoring) { _, _ in
+            if model.backend == .laya { runSearch() }
+        }
+    }
+
+    private var backendPicker: some View {
+        Picker("Retrieval backend", selection: $model.backend) {
+            ForEach(Backend.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder private var precisionPicker: some View {
+        if model.backend == .laya {
+            Picker("Laya precision", selection: $model.layaPrecision) {
+                ForEach(DecisionPrecision.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+        } else {
+            retrievalPrecisionPicker
+        }
+    }
+
+    private var retrievalPrecisionPicker: some View {
+        Picker("Retrieval precision", selection: $model.quant) {
+            ForEach(Quant.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
     }
 
     // MARK: Search
@@ -141,12 +187,14 @@ struct ContentView: View {
                 .onSubmit { runSearch() }
             if !query.isEmpty {
                 Button {
+                    searchTask?.cancel()
                     query = ""
                     model.clearResults()
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Brand.textLight)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Clear request")
             }
         }
         .padding(.horizontal, 16)
@@ -160,8 +208,11 @@ struct ContentView: View {
         FlowLayout(spacing: 8) {
             ForEach(examples, id: \.query) { ex in
                 Button {
-                    query = ex.query
-                    runSearch()
+                    if query == ex.query {
+                        runSearch()
+                    } else {
+                        query = ex.query
+                    }
                 } label: {
                     HStack(spacing: 6) {
                         Circle().fill(Brand.color(for: ex.domain)).frame(width: 7, height: 7)
@@ -196,14 +247,29 @@ struct ContentView: View {
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
+            Button("Retry model") { reload(backend: model.backend, quant: model.quant) }
+                .buttonStyle(.bordered)
         case .ready:
-            if !model.results.isEmpty {
-                Text(
-                    "top \(model.results.count) of \(model.tools.count) tools · \(model.lastLatencyMs) ms"
-                )
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(Brand.textLight)
+            VStack(spacing: 8) {
+                if model.isSearching {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Scoring \(model.tools.count) tools…")
+                    }
+                } else if let message = model.searchError {
+                    Text(message).foregroundStyle(.red).textSelection(.enabled)
+                } else if !model.results.isEmpty {
+                    Text("top \(model.results.count) of \(model.tools.count) tools · \(model.lastLatencyMs) ms")
+                    if model.truncatedToolCount > 0 {
+                        Text("Prompt text was shortened for \(model.truncatedToolCount) tools. Inspect prompt details on the result cards.")
+                            .foregroundStyle(.orange)
+                    }
+                } else if let milliseconds = model.loadLatencyMs {
+                    Text("Model ready · loaded in \(milliseconds) ms")
+                }
             }
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(Brand.textLight)
         }
     }
 
@@ -217,14 +283,14 @@ struct ContentView: View {
     @ViewBuilder private var resultsList: some View {
         if !model.results.isEmpty {
             VStack(spacing: 12) {
-                ForEach(model.results) { ResultCard(result: $0) }
+                ForEach(model.results) { ResultCard(result: $0, backend: model.backend) }
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
     @ViewBuilder private var emptyHint: some View {
-        if model.results.isEmpty, case .ready = model.status {
+        if model.results.isEmpty, !model.isSearching, model.searchError == nil, case .ready = model.status {
             Text("Type a request, or tap an example to retrieve the matching tools ✨")
                 .font(.callout)
                 .foregroundStyle(Brand.textLight)
@@ -238,6 +304,11 @@ struct ContentView: View {
     private func debouncedSearch() {
         searchTask?.cancel()
         let q = query
+        model.prepareSearch(q)
+        guard !q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            model.clearResults()
+            return
+        }
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(250))
             if Task.isCancelled { return }
@@ -248,10 +319,12 @@ struct ContentView: View {
     private func runSearch() {
         searchTask?.cancel()
         let q = query
+        model.prepareSearch(q)
         searchTask = Task { await model.search(q) }
     }
 
     private func reload(backend: Backend, quant: Quant) {
+        searchTask?.cancel()
         model.reload(backend: backend, quant: quant)
     }
 }
@@ -260,6 +333,7 @@ struct ContentView: View {
 
 private struct ResultCard: View {
     let result: SearchResult
+    let backend: Backend
     @State private var expanded = false
 
     private var tool: Tool { result.tool }
@@ -291,14 +365,32 @@ private struct ResultCard: View {
                     .font(.system(.caption, design: .monospaced)).foregroundStyle(Brand.textLight)
                 Text(tool.name)
                     .font(.system(.body, design: .monospaced)).fontWeight(.semibold)
-                Spacer()
-                DomainBadge(domain: tool.domain)
-                Text("\(Int((result.score * 100).rounded()))%")
-                    .font(.system(.caption, design: .monospaced).bold())
-                    .foregroundStyle(Brand.purple)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right")
                     .font(.caption.bold()).foregroundStyle(Brand.textLight)
                     .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+            HStack(spacing: 10) {
+                DomainBadge(domain: tool.domain)
+                if backend == .laya {
+                    if result.isChoiceProbability {
+                        Text("Choice probability \(result.score, format: .percent.precision(.fractionLength(1)))")
+                            .help("Probability among the finalists and a no-match option. Earlier rounds narrow the catalog. This is not an independent probability that the tool is useful.")
+                    } else {
+                        Text("Relevance \(result.score, format: .percent.precision(.fractionLength(1)))")
+                            .help("Laya's estimated probability that this tool is useful for the request. Used to rank candidates.")
+                    }
+                } else {
+                    Text("Retrieval score \(result.score, format: .number.precision(.fractionLength(3)))")
+                }
+            }
+            .font(.system(.caption, design: .monospaced).bold())
+            .foregroundStyle(Brand.purple)
+            if let confidence = result.confidence {
+                Text("Confidence \(confidence, format: .percent.precision(.fractionLength(1)))")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(Brand.textMid)
+                    .help("Certainty in either relevance or irrelevance: max(relevance, 1 − relevance). This does not measure proven accuracy.")
             }
             Text(tool.description)
                 .font(.callout).foregroundStyle(Brand.textMid)
@@ -316,6 +408,21 @@ private struct ResultCard: View {
     private var expandedDetail: some View {
         VStack(alignment: .leading, spacing: 12) {
             Divider()
+            if let diagnostics = result.inputDiagnostics {
+                DisclosureGroup("Prompt details") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Retained / original text tokens")
+                        Text("Request: \(diagnostics.state.retainedTokenCount) / \(diagnostics.state.originalTokenCount)")
+                        Text("Tool question: \(diagnostics.instructions.retainedTokenCount) / \(diagnostics.instructions.originalTokenCount)")
+                        ForEach(diagnostics.options, id: \.optionID) { option in
+                            Text("\(option.optionID): \(option.tokens.retainedTokenCount) / \(option.tokens.originalTokenCount)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Brand.textMid)
+                    .padding(.top, 4)
+                }
+            }
             if !tool.parameters.isEmpty {
                 Text("ARGUMENTS")
                     .font(.system(.caption2, design: .monospaced)).tracking(1.5)

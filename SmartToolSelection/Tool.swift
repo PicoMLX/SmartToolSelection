@@ -9,7 +9,7 @@
 import Foundation
 
 /// One tool parameter parsed from a JSON-Schema property.
-struct ToolParameter: Identifiable, Hashable {
+nonisolated struct ToolParameter: Identifiable, Hashable, Sendable {
     let name: String
     let type: String
     let description: String
@@ -25,7 +25,7 @@ struct ToolParameter: Identifiable, Hashable {
 }
 
 /// A single callable tool, its parameters, and the pack (domain) it came from.
-struct Tool: Identifiable, Hashable {
+nonisolated struct Tool: Identifiable, Hashable, Sendable {
     let name: String
     let description: String
     let domain: String
