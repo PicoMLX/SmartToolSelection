@@ -2,7 +2,7 @@
 
 A native, on-device Swift port of LiquidAI's [ColBERT Tool Selection Space](https://huggingface.co/spaces/LiquidAI/colbert-tool-selection) — the same demo, running entirely on Apple Silicon with no server.
 
-> An agent with **151 tools** can't fit them all in one prompt. Type a request and an [LFM2.5](https://huggingface.co/LiquidAI) retriever pre-selects the **5 most relevant** tools, so you hand a small candidate set to the LLM instead of dumping every schema into the context window.
+> An agent with **151 tools** can't fit them all in one prompt. Type a request and Embedding, ColBERT, or Laya pre-selects the **5 most relevant** tools, so you hand a small candidate set to the LLM instead of dumping every schema into the context window.
 
 <p align="center">
   <img src="Screenshots/home.png" width="49%" alt="Home screen: backend and precision toggles, a search box, and example queries">
@@ -14,25 +14,25 @@ A native, on-device Swift port of LiquidAI's [ColBERT Tool Selection Space](http
 
 The app indexes 151 tool definitions spanning 7 domains (e-commerce, devops, travel, support, and more). For each request it scores every tool and shows the top 5 — the candidate set you would route to an LLM instead of all 151 schemas.
 
-Enable **PicoDecisions routing** to pass those five candidates to the multilingual Laya decision model. It recommends one tool or **No matching tool**, then a configurable acceptance policy accepts the recommendation or abstains. The panel shows decision probabilities, latency, and prompt-truncation details alongside the existing retrieval results. This is a routing test harness: it does not collect arguments, authorize actions, or execute tools.
-
-Two retrievers, switchable in the UI:
+Three backends, switchable in the UI, each scoring the full catalog:
 
 - **Embedding** — `LFM2.5-Embedding-350M`: one CLS-pooled vector per tool, ranked by cosine similarity.
 - **ColBERT** — `LFM2.5-ColBERT-350M`: one vector per token, ranked by MaxSim late interaction. This is the default, matching the original Space.
+- **Laya** — the multilingual decision model through [PicoDecisions](https://github.com/PicoMLX/PicoDecisions): one independent boolean relevance question per tool, ranked by probability of true.
+
+All three return the same top-five tool cards for a downstream LLM to choose from. The demo does not generate arguments or execute tools. Laya scores all 151 tools directly, without an embedding or ColBERT shortlist.
 
 ## How it works
 
 Everything runs in-process on the device:
 
-1. **Tokenize** the request (via [swift-transformers](https://github.com/huggingface/swift-transformers)).
-2. **Encode** the query and each tool's routing text with LFM2.5 — the encoder forward runs on the **Apple Silicon GPU through [MLX-Swift](https://github.com/ml-explore/mlx-swift)**, using [mlx-swift-lm](https://github.com/PicoMLX/mlx-swift-lm)'s `MLXEmbedders` (which gained native LFM2.5 bidirectional-encoder support for this app).
-3. **Score** on the CPU with **[Accelerate](https://developer.apple.com/documentation/accelerate)** — a single BLAS call per query over flat, L2-normalized vectors: `cblas_sgemv` for embedding cosine, `cblas_sgemm` + `vDSP_maxv` for ColBERT MaxSim.
-4. **Rank** and show the top 5.
-5. **Decide**, when PicoDecisions routing is enabled: [PicoDecisions](https://github.com/PicoMLX/PicoDecisions) runs Laya in FP16 or FP32 over the retrieved tool descriptions plus an explicit no-match option.
-6. **Apply the acceptance policy** and display the raw recommendation, policy result, and prompt diagnostics. Retrieval scores and decision probabilities remain separate.
+1. **Load** the selected backend. Switching backends releases the previous model and index before loading its replacement.
+2. **Score** the catalog. Embedding and ColBERT index each tool's routing text (name, description, parameter names, enum values, and keywords), reuse that cached index, and encode the request with [MLX Swift](https://github.com/ml-explore/mlx-swift) and [MLXEmbedders](https://github.com/PicoMLX/mlx-swift-lm), and rank using [Accelerate](https://developer.apple.com/documentation/accelerate) BLAS. Laya uses the request as shared state and asks one boolean question per tool about whether its described capability is required (falling back to the tool name for an empty description). PicoDecisions processes these questions in batches of 16.
+3. **Rank** scores and show the top five. Equal scores retain catalog order. No relevance threshold or single-tool decision is applied.
 
-The tool index is built once when a model loads; each keystroke only re-encodes the query, so a search takes tens of milliseconds (the per-query latency is shown in the UI).
+Each Laya card shows **Relevance**, the probability the tool is useful, and **Confidence**, certainty in either relevance or irrelevance (`max(p, 1 - p)`). Only relevance controls ranking. Neither value is a calibrated accuracy guarantee, and scores from different backends are not directly comparable.
+
+The displayed search latency covers completed scoring and result conversion over the full catalog, excluding model loading and queued GPU waiting. Laya re-evaluates every tool for each request; its full-catalog timing is not comparable to the earlier one-question routing benchmark. Editing or clearing a request and changing backend or precision cancel obsolete searches; stale results are discarded.
 
 ## Models & quantization
 
@@ -62,13 +62,13 @@ Retention is NDCG@10 against the bf16 baseline, measured over **NanoBEIR** (Engl
 2. Select the **SmartToolSelection** scheme and run.
 3. On first launch the app downloads the selected model from Hugging Face into `~/Library/Application Support/SmartToolSelection/models/` (the full path is printed to the console). Later launches load from that cache.
 
-Pick a backend (Embedding / ColBERT) and precision (bf16 / int8 / int4) at the top of the window; switching either downloads the matching model as needed and rebuilds the index.
+Pick a backend (Embedding / ColBERT / Laya) and precision (bf16 / int8 / int4 for retrieval, FP16 / FP32 for Laya) at the top of the window; switching either downloads the matching model as needed and rebuilds the index.
 
-The PicoDecisions dependency pins commit `7b94c97695c4592d5067d50a8bd8982a6a26536e`, which includes prompt-truncation diagnostics from [PicoDecisions PR #6](https://github.com/PicoMLX/PicoDecisions/pull/6). That PR is the integration's pending upstream dependency; the commit pin also resolves before it merges.
+The PicoDecisions dependency pins commit `7b94c97695c4592d5067d50a8bd8982a6a26536e`, which includes prompt-truncation diagnostics from [PicoDecisions PR #6](https://github.com/PicoMLX/PicoDecisions/pull/6). That PR is merged; the commit remains pinned for reproducible builds.
 
-## Enable PicoDecisions routing
+## Use Laya
 
-Turn on **PicoDecisions routing** below the search field. The first use downloads approximately 648 MB from [convaiinnovations/laya-multilingual](https://huggingface.co/convaiinnovations/laya-multilingual) at the validated revision `052592a15d198d9ad47da779604259b10b47b7aa`. Later uses load the cached checkpoint. FP16 and FP32 use the same downloaded files, with the selected precision applied when loading.
+Select **Laya** in the backend picker. FP16 is the default; FP32 is also available. The first use downloads approximately 648 MB from [convaiinnovations/laya-multilingual](https://huggingface.co/convaiinnovations/laya-multilingual) at the validated revision `052592a15d198d9ad47da779604259b10b47b7aa`. Later uses load the cached checkpoint. FP16 and FP32 use the same downloaded files, with the selected precision applied when loading.
 
 The cache is inside the app's Application Support directory under:
 
@@ -84,26 +84,40 @@ SmartToolSelection/models/convaiinnovations/laya-multilingual/
 
 The console prints the full device-specific path. Keep the nested directories intact if you inspect or copy the checkpoint.
 
-Both **Acceptance thresholds** start at zero, disabling their gates. Increase **Minimum probability** or **Minimum margin** to experiment with abstention; the margin compares the selected option with its strongest rival, including no match. Changing a threshold reevaluates the current recommendation without another inference call. These thresholds and model probabilities are uncalibrated, so acceptance does not establish that a tool is appropriate or authorized.
-
-Expand **Decision probabilities** to compare the five candidates and no match. Expand **Prompt token details** to inspect retained/original token counts for the request, routing instructions, and each candidate description. A shortened-description warning means decision criteria may have been omitted. Overlong request state is rejected rather than silently shortened; the retrieved cards remain available if decision inference fails.
+Expand a tool card and **Prompt details** to inspect retained/original token counts. A warning appears if any of the 151 questions loses prompt text. Overlong request state is rejected rather than silently shortened. Search errors leave the model available to retry with another request.
 
 ## Test on a physical device
 
-This integration provides the device test harness. Physical-device correctness, memory, and performance results still need to be collected.
+Physical-device correctness, memory, and performance still require measurement.
 
-1. Open `SmartToolSelection.xcodeproj` in Xcode and select the **SmartToolSelection** scheme.
-2. Select your connected iPhone or iPad as the run destination and configure the app target's signing team, then run it.
-3. Allow the selected retriever to download and index the catalog. Enable **PicoDecisions routing** and wait for the decision model to report ready.
-4. Try an ordinary request such as `show me cheap blue outdoor chairs`, a negated request such as `Do not cancel my order`, and an unrelated request such as `Tell me a bedtime story`. Compare the retrieved candidates with the raw recommendation and no-match probability; these inputs probe behavior rather than guarantee particular outputs.
-5. Expand **Prompt token details** and inspect candidates with long descriptions. Try a long request to check the capacity-error path. Record input-token counts, any omitted tokens, model-load time, decision latency, and the separately reported retrieval latency. Model-load time excludes the download, and decision latency excludes waiting for other queued GPU work.
-6. Switch **Decision precision** between FP16 and FP32 and repeat the same requests. Use Xcode's memory gauge while loading and routing to compare memory use. Edit or clear a request during inference, and switch retrieval backends, to check that older recommendations do not reappear.
+1. Open `SmartToolSelection.xcodeproj`, select the **SmartToolSelection** scheme, and configure the signing team for your connected device.
+2. Select **Laya** and wait for its checkpoint to download and load.
+3. Try an ordinary request, a negated request such as `Find my order; do not cancel it`, and a multi-tool request such as `Find a flight, book it, and add it to my calendar`. Compare the top five against Embedding and ColBERT. Missing arguments should not automatically exclude a useful capability.
+4. Inspect relevance and confidence separately. Try unrelated and long requests, and inspect any prompt-shortening warning. Every successful search still returns five candidates, including when all scores are low.
+5. Record full-catalog search latency, model-load time, and Xcode's process-memory gauge in FP16 and FP32. Clear or edit the request during inference and switch backends to check that obsolete results do not reappear.
 
-The routing unit tests use a fake decision engine and do not require Hugging Face downloads. To keep the test host offline, set `SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` in the scheme's Test environment, or pass `TEST_RUNNER_SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` to `xcodebuild test`. Existing retrieval tests use cached model files and skip when those files are absent. Run the **SmartToolSelectionTests** target through Xcode; actual Metal inference requires an Apple Silicon Mac or physical device.
+The deterministic tests inject fake search and decision models and do not download weights. Set `SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` in the scheme's Test environment, or pass `TEST_RUNNER_SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1` to `xcodebuild test`, to keep the app test host offline. Existing retrieval tests use cached model files and skip when absent. Actual inference needs Apple silicon GPU access. Opt-in full-catalog Laya smoke tests use a local checkpoint directory supplied as `SMART_TOOL_SELECTION_LAYA_MODEL` (or `TEST_RUNNER_SMART_TOOL_SELECTION_LAYA_MODEL` with `xcodebuild`). Run this suite separately from the cached retriever tests to avoid concurrent GPU execution across suites:
+
+```sh
+TEST_RUNNER_SMART_TOOL_SELECTION_SKIP_MODEL_LOAD=1 \
+TEST_RUNNER_SMART_TOOL_SELECTION_LAYA_MODEL=/absolute/path/to/laya-multilingual \
+xcodebuild test -project SmartToolSelection.xcodeproj -scheme SmartToolSelection \
+  -destination 'platform=macOS,arch=arm64' \
+  -only-testing:SmartToolSelectionTests/LayaCatalogSmokeTests \
+  -parallel-testing-enabled NO
+```
+
+The smoke run prints full-catalog times, ranked tools, and truncation counts for ordinary, negated, and multi-tool requests. It verifies complete, finite outputs, not benchmark accuracy.
+
+## Development validation
+
+On October 7, 2026, the updated app passed the macOS test suite (18 test functions, with the uncached embedding check and opt-in Laya suite skipped), cached ColBERT inference checks, and an unsigned iOS device build using Xcode 27. A separate live FP16 Laya test completed all 151 questions for each of three requests, with finite relevance/confidence values and zero truncated questions. The Debug full-catalog scoring times were 720, 835, and 821 ms on the development Mac; this three-request smoke run is not a Release latency benchmark.
+
+The capability prompt was selected using these same development examples, not held-out data. It included `search_products` in the top five for the chair request and ranked `book_flight` first for the flight request. However, `Find my order; do not cancel it` ranked unrelated pharmacy/medical tools with probabilities above 0.99. This is a working comparison harness, not evidence that independent Laya relevance scores outperform retrieval or that high confidence establishes correctness. Representative candidate-recall and downstream tool-calling evaluation remain outstanding.
 
 ## Credits
 
 - **Models** — [LiquidAI](https://huggingface.co/LiquidAI) LFM2.5-Embedding-350M and LFM2.5-ColBERT-350M, converted to MLX ([model repositories](https://huggingface.co/mlx-community)).
 - **Original demo** — LiquidAI's [ColBERT Tool Selection Space](https://huggingface.co/spaces/LiquidAI/colbert-tool-selection).
 - **On-device inference** — [MLX-Swift](https://github.com/ml-explore/mlx-swift) and [mlx-swift-lm](https://github.com/PicoMLX/mlx-swift-lm).
-- **Decision routing** — [PicoDecisions](https://github.com/PicoMLX/PicoDecisions), using Convai Innovations' [multilingual Laya checkpoint](https://huggingface.co/convaiinnovations/laya-multilingual).
+- **Laya retrieval** — [PicoDecisions](https://github.com/PicoMLX/PicoDecisions), using Convai Innovations' [multilingual Laya checkpoint](https://huggingface.co/convaiinnovations/laya-multilingual).

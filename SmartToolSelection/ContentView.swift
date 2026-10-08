@@ -3,6 +3,7 @@
 //  on-device via MLX (mlx-swift-lm) instead of a FastAPI server.
 
 import SwiftUI
+import PicoDecisions
 
 // MARK: - Brand palette (from the original site)
 
@@ -60,9 +61,6 @@ struct ContentView: View {
                 controls
                 searchBar
                 statusLine
-                DecisionRoutingPanel(
-                    model: model.decisionRouting,
-                    configurationChanged: { model.configureDecisionRouting() })
                 resultsList
                 exampleChips
                 emptyHint
@@ -111,7 +109,7 @@ struct ContentView: View {
                 + Text("\(model.tools.count) tools").foregroundStyle(Brand.purple).bold()
                 + Text(" can't fit them all in one prompt. Send a request and the model pre-selects the ")
                 + Text("5 most relevant").foregroundStyle(Brand.purple).bold()
-                + Text(" ones to reduce context rot."))
+                + Text(" ones to pass to the LLM."))
                 .font(.callout)
                 .foregroundStyle(Brand.textMid)
                 .multilineTextAlignment(.center)
@@ -126,15 +124,18 @@ struct ContentView: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
                 backendPicker.fixedSize()
-                retrievalPrecisionPicker.fixedSize()
+                precisionPicker.fixedSize()
             }
             VStack(spacing: 12) {
                 backendPicker
-                retrievalPrecisionPicker
+                precisionPicker
             }
         }
         .onChange(of: model.backend) { _, b in reload(backend: b, quant: model.quant) }
         .onChange(of: model.quant) { _, q in reload(backend: model.backend, quant: q) }
+        .onChange(of: model.layaPrecision) { _, _ in
+            if model.backend == .laya { reload(backend: .laya, quant: model.quant) }
+        }
     }
 
     private var backendPicker: some View {
@@ -142,6 +143,17 @@ struct ContentView: View {
             ForEach(Backend.allCases) { Text($0.title).tag($0) }
         }
         .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder private var precisionPicker: some View {
+        if model.backend == .laya {
+            Picker("Laya precision", selection: $model.layaPrecision) {
+                ForEach(DecisionPrecision.allCases) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+        } else {
+            retrievalPrecisionPicker
+        }
     }
 
     private var retrievalPrecisionPicker: some View {
@@ -223,14 +235,29 @@ struct ContentView: View {
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
+            Button("Retry model") { reload(backend: model.backend, quant: model.quant) }
+                .buttonStyle(.bordered)
         case .ready:
-            if !model.results.isEmpty {
-                Text(
-                    "top \(model.results.count) of \(model.tools.count) tools · \(model.lastLatencyMs) ms"
-                )
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(Brand.textLight)
+            VStack(spacing: 8) {
+                if model.isSearching {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Scoring \(model.tools.count) tools…")
+                    }
+                } else if let message = model.searchError {
+                    Text(message).foregroundStyle(.red).textSelection(.enabled)
+                } else if !model.results.isEmpty {
+                    Text("top \(model.results.count) of \(model.tools.count) tools · \(model.lastLatencyMs) ms")
+                    if model.truncatedToolCount > 0 {
+                        Text("Prompt text was shortened for \(model.truncatedToolCount) tools. Inspect prompt details on the result cards.")
+                            .foregroundStyle(.orange)
+                    }
+                } else if let milliseconds = model.loadLatencyMs {
+                    Text("Model ready · loaded in \(milliseconds) ms")
+                }
             }
+            .font(.system(.caption, design: .monospaced))
+            .foregroundStyle(Brand.textLight)
         }
     }
 
@@ -244,14 +271,14 @@ struct ContentView: View {
     @ViewBuilder private var resultsList: some View {
         if !model.results.isEmpty {
             VStack(spacing: 12) {
-                ForEach(model.results) { ResultCard(result: $0) }
+                ForEach(model.results) { ResultCard(result: $0, backend: model.backend) }
             }
             .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 
     @ViewBuilder private var emptyHint: some View {
-        if model.results.isEmpty, case .ready = model.status {
+        if model.results.isEmpty, !model.isSearching, model.searchError == nil, case .ready = model.status {
             Text("Type a request, or tap an example to retrieve the matching tools ✨")
                 .font(.callout)
                 .foregroundStyle(Brand.textLight)
@@ -294,6 +321,7 @@ struct ContentView: View {
 
 private struct ResultCard: View {
     let result: SearchResult
+    let backend: Backend
     @State private var expanded = false
 
     private var tool: Tool { result.tool }
@@ -332,9 +360,20 @@ private struct ResultCard: View {
             }
             HStack(spacing: 10) {
                 DomainBadge(domain: tool.domain)
-                Text("Retrieval score \(result.score, format: .number.precision(.fractionLength(3)))")
-                    .font(.system(.caption, design: .monospaced).bold())
-                    .foregroundStyle(Brand.purple)
+                if backend == .laya {
+                    Text("Relevance \(result.score, format: .percent.precision(.fractionLength(1)))")
+                        .help("Laya's estimated probability that this tool is useful for the request. Used to rank candidates.")
+                } else {
+                    Text("Retrieval score \(result.score, format: .number.precision(.fractionLength(3)))")
+                }
+            }
+            .font(.system(.caption, design: .monospaced).bold())
+            .foregroundStyle(Brand.purple)
+            if let confidence = result.confidence {
+                Text("Confidence \(confidence, format: .percent.precision(.fractionLength(1)))")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(Brand.textMid)
+                    .help("Certainty in either relevance or irrelevance: max(relevance, 1 − relevance). This does not measure proven accuracy.")
             }
             Text(tool.description)
                 .font(.callout).foregroundStyle(Brand.textMid)
@@ -352,6 +391,21 @@ private struct ResultCard: View {
     private var expandedDetail: some View {
         VStack(alignment: .leading, spacing: 12) {
             Divider()
+            if let diagnostics = result.inputDiagnostics {
+                DisclosureGroup("Prompt details") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Retained / original text tokens")
+                        Text("Request: \(diagnostics.state.retainedTokenCount) / \(diagnostics.state.originalTokenCount)")
+                        Text("Tool question: \(diagnostics.instructions.retainedTokenCount) / \(diagnostics.instructions.originalTokenCount)")
+                        ForEach(diagnostics.options, id: \.optionID) { option in
+                            Text("\(option.optionID): \(option.tokens.retainedTokenCount) / \(option.tokens.originalTokenCount)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Brand.textMid)
+                    .padding(.top, 4)
+                }
+            }
             if !tool.parameters.isEmpty {
                 Text("ARGUMENTS")
                     .font(.system(.caption2, design: .monospaced)).tracking(1.5)
